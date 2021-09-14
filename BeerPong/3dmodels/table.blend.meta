@@ -1,0 +1,240 @@
+fileFormatVersion: 2
+guid: 1f99288318f8e0048bd017263dd6909e
+ModelImporter:
+  serializedVersion: 23
+  fileIDToRecycleName:
+    100000: 2Players
+    100002: 3Players
+    100004: 4Players
+    100006: //RootNode
+    100008: Collider2
+    100010: Collider3
+    100012: Collider4
+    100014: Part1
+    100016: Part2
+    100018: 3Divider1
+    100020: 3Divider2
+    100022: 3Divider3
+    100024: Divider1
+    100026: Divider2
+    100028: 2Divider
+    100030: 3Divider
+    100032: 4Divider
+    100034: Fixture1
+    100036: Fixture2
+    100038: Panel
+    100040: Panel.001
+    100042: Slider
+    100044: Slider.001
+    100046: Spare
+    100048: Button1
+    100050: Button2
+    400000: 2Players
+    400002: 3Players
+    400004: 4Players
+    400006: //RootNode
+    400008: Collider2
+    400010: Collider3
+    400012: Collider4
+    400014: Part1
+    400016: Part2
+    400018: 3Divider1
+    400020: 3Divider2
+    400022: 3Divider3
+    400024: Divider1
+    400026: Divider2
+    400028: 2Divider
+    400030: 3Divider
+    400032: 4Divider
+    400034: Fixture1
+    400036: Fixture2
+    400038: Panel
+    400040: Panel.001
+    400042: Slider
+    400044: Slider.001
+    400046: Spare
+    400048: Button1
+    400050: Button2
+    2100000: Material
+    2100002: Metall
+    2100004: Glass
+    2100006: Wood
+    2100008: Shell
+    2100010: Button
+    2100012: PlayerIndicator
+    2300000: 2Players
+    2300002: 3Players
+    2300004: 4Players
+    2300006: Collider2
+    2300008: Collider3
+    2300010: Collider4
+    2300012: Part1
+    2300014: Part2
+    2300016: 3Divider1
+    2300018: 3Divider2
+    2300020: 3Divider3
+    2300022: Divider1
+    2300024: Divider2
+    2300026: 2Divider
+    2300028: 3Divider
+    2300030: 4Divider
+    2300032: Fixture1
+    2300034: Fixture2
+    2300036: Panel
+    2300038: Panel.001
+    2300040: Slider
+    2300042: Slider.001
+    2300044: Spare
+    2300046: Button1
+    2300048: Button2
+    3300000: 2Players
+    3300002: 3Players
+    3300004: 4Players
+    3300006: Collider2
+    3300008: Collider3
+    3300010: Collider4
+    3300012: Part1
+    3300014: Part2
+    3300016: 3Divider1
+    3300018: 3Divider2
+    3300020: 3Divider3
+    3300022: Divider1
+    3300024: Divider2
+    3300026: 2Divider
+    3300028: 3Divider
+    3300030: 4Divider
+    3300032: Fixture1
+    3300034: Fixture2
+    3300036: Panel
+    3300038: Panel.001
+    3300040: Slider
+    3300042: Slider.001
+    3300044: Spare
+    3300046: Button1
+    3300048: Button2
+    4300000: 2Players
+    4300002: 3Players
+    4300004: 4Players
+    4300006: Collider2
+    4300008: Collider3
+    4300010: Collider4
+    4300012: Part1
+    4300014: Part2
+    4300016: 3Divider1
+    4300018: 3Divider2
+    4300020: 3Divider3
+    4300022: Divider1
+    4300024: Divider2
+    4300026: 2Divider
+    4300028: 4Divider
+    4300030: 3Divider
+    4300032: Fixture1
+    4300034: Slider
+    4300036: Panel
+    4300038: Spare
+    4300040: Fixture2
+    4300042: Slider.001
+    4300044: Panel.001
+    4300046: Button1
+    4300048: Button2
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Glass
+    second: {fileID: 2100000, guid: fbbaae835b4f6794abf7ee1478bac806, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Metall
+    second: {fileID: 2100000, guid: dbb087387cf55f14eaab6ff366363da5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Wood
+    second: {fileID: 2100000, guid: b21c643649920af4498db6b75f374a13, type: 2}
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    rigImportErrors: 
+    rigImportWarnings: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
+    importConstraints: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    extraUserProperties: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    useSRGBMaterialColor: 1
+    importVisibility: 1
+    importBlendShapes: 1
+    importCameras: 1
+    importLights: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    preserveHierarchy: 0
+    indexFormat: 0
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+    previousCalculatedGlobalScale: 1
+    hasPreviousCalculatedGlobalScale: 0
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+    normalCalculationMode: 4
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    blendShapeNormalImportMode: 1
+    normalSmoothingSource: 0
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 0
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

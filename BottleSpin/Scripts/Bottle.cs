@@ -33,6 +33,7 @@ namespace Thry.SpinTheBottle
                 LateJoingerAngle = 0.1f;
                 RequestSerialization();
             }
+            targetedPlayerText.text = "";
         }
 
         //===========Synced vars===========
