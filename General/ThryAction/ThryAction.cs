@@ -65,6 +65,7 @@ namespace Thry.General
 
         //Action Togggles
         public GameObject[] toggleObjects;
+        public GameObject[] toggleObjectsInverted;
         public VRC_Pickup[] togglePickups;
         public Collider[] toggleColliders;
         //Action Script Calls
@@ -96,6 +97,7 @@ namespace Thry.General
         private Transform selectedMirror;
 
         bool hasStartNotRun = true;
+        bool doBlockOnInteract = false;
 
         private void Start()
         {
@@ -191,6 +193,7 @@ namespace Thry.General
 
         public void OnInteraction()
         {
+            if (doBlockOnInteract) return;
             if (specialActionType == 0 && IsNormalRequirementMet()) _UpdateValuesAndExecuteNormals();
             if (specialActionType == 1 && IsMirrorRequirementMet()) _ExecuteMirror();
         }
@@ -276,6 +279,7 @@ namespace Thry.General
         public override void OnDeserialization()
         {
             if (!is_synced) return;
+            doBlockOnInteract = true;
             prev_local_bool = local_bool;
             if (actionType == ACTION_TYPE_SLIDER)
             {
@@ -295,6 +299,7 @@ namespace Thry.General
             }
             _ExecuteAlwaysActions();
             SyncRemotesIfHiveAndMaster();
+            doBlockOnInteract = false;
         }
 
         public void _UpdateValuesAndExecuteNormals()
@@ -307,9 +312,11 @@ namespace Thry.General
                 else _master._UpdateValuesAndExecuteNormals();
                 return;
             }
-            _UpdateValues();
-            _ExecuteNormalActions();
-            SyncRemotesIfHiveAndMaster();
+            if (_UpdateValues())
+            {
+                _ExecuteNormalActions();
+                SyncRemotesIfHiveAndMaster();
+            }
         }
 
         private void SyncRemotesIfHiveAndMaster()
@@ -333,27 +340,29 @@ namespace Thry.General
             _SyncRemoteUIElelemt();
         }
 
-        private void _UpdateValues()
+        private bool _UpdateValues()
         {
             prev_local_bool = local_bool;
             if (is_synced)
             {
-                Networking.SetOwner(Networking.LocalPlayer, gameObject);
                 if (actionType == ACTION_TYPE_SLIDER)
                 {
-                    if (_uiSlider.value == local_float) return; //prevent loops
+                    if (_uiSlider.value == local_float) return false; //prevent loops
+                    Networking.SetOwner(Networking.LocalPlayer, gameObject);
                     synced_float = _uiSlider.value;
                     local_float = synced_float;
                     local_bool = synced_float == 1;
                 }
                 else if (actionType == ACTION_TYPE_TOGGLE)
                 {
-                    if (_uiToggle.isOn == local_bool) return; //prevent loops
+                    if (_uiToggle.isOn == local_bool) return false; //prevent loops
+                    Networking.SetOwner(Networking.LocalPlayer, gameObject);
                     synced_bool = _uiToggle.isOn;
                     local_bool = synced_bool;
                 }
                 else
                 {
+                    Networking.SetOwner(Networking.LocalPlayer, gameObject);
                     synced_bool = !synced_bool;
                     local_bool = synced_bool;
                 }
@@ -363,13 +372,13 @@ namespace Thry.General
             {
                 if (actionType == ACTION_TYPE_SLIDER)
                 {
-                    if (_uiSlider.value == local_float) return; //prevent loops
+                    if (_uiSlider.value == local_float) return false; //prevent loops
                     local_float = _uiSlider.value;
                     local_bool = synced_float == 1;
                 }
                 else if (actionType == ACTION_TYPE_TOGGLE)
                 {
-                    if (_uiToggle.isOn == local_bool) return; //prevent loops
+                    if (_uiToggle.isOn == local_bool) return false; //prevent loops
                     local_bool = _uiToggle.isOn;
                 }
                 else
@@ -377,6 +386,7 @@ namespace Thry.General
                     local_bool = !local_bool;
                 }
             }
+            return true;
         }
 
         public void _SyncRemoteUIElelemt()
@@ -444,6 +454,7 @@ namespace Thry.General
             if(actionType == ACTION_TYPE_TOGGLE)
             {
                 foreach (GameObject o in toggleObjects) o.SetActive(local_bool);
+                foreach (GameObject o in toggleObjectsInverted) o.SetActive(!local_bool);
                 foreach (Collider c in toggleColliders) c.enabled = local_bool;
                 foreach (VRC_Pickup p in togglePickups) p.pickupable = local_bool;
             }
@@ -876,6 +887,7 @@ namespace Thry.General
             {
                 EditorGUI.indentLevel += 1;
                 ArrayGUI(nameof(action.toggleObjects), "Toggle GameObjects");
+                if(actionType == ActionType.Toggle) ArrayGUI(nameof(action.toggleObjectsInverted), "Toggle GameObjects Inverted");
                 ArrayGUI(nameof(action.toggleColliders), "Toggle Colliders");
                 ArrayGUI(nameof(action.togglePickups), "Toggle Pickups");
                 EditorGUILayout.Space();
