@@ -21,6 +21,7 @@ namespace Thry.BeerPong
         [UdonSynced]
         [HideInInspector]
         public int selectedIndex;
+        int localSelectedIndex;
 
         void Start()
         {
@@ -42,10 +43,12 @@ namespace Thry.BeerPong
 
         public override void OnDeserialization()
         {
+            if (localSelectedIndex == selectedIndex) return;
             for (int i = 0; i < _remotes.Length; i++) ((UdonBehaviour)_remotes[i].GetComponent(typeof(UdonBehaviour))).SendCustomEvent("Sync");
             selectedText.text = options[selectedIndex];
             if (_cups != null) _cups.ResetGlassesIfNoneHit();
             if (_main != null) _main.ChangeGameMode();
+            localSelectedIndex = selectedIndex;
         }
 
         public void Next()

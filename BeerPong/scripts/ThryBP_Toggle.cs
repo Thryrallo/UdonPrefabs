@@ -16,6 +16,7 @@ namespace Thry.BeerPong {
 
         [UdonSynced]
         public bool value;
+        bool _localValue;
 
         private void Start()
         {
@@ -45,6 +46,7 @@ namespace Thry.BeerPong {
 
         public override void OnDeserialization()
         {
+            if (value == _localValue) return;
             for (int i = 0; i < _remotes.Length; i++) ((UdonBehaviour)_remotes[i].GetComponent(typeof(UdonBehaviour))).SendCustomEvent("Sync");
             if (_ui != null)
             {
@@ -64,6 +66,7 @@ namespace Thry.BeerPong {
             {
                 animator.SetBool("on", value);
             }
+            _localValue = value;
         }
 
         public override void Interact()

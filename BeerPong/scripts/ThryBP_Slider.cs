@@ -16,11 +16,13 @@ namespace Thry.BeerPong
 
         [UdonSynced]
         public int value;
+        int _localValue;
 
         private void Start()
         {
             _slider = GetComponent<Slider>();
             value = (int)_slider.value;
+            _localValue = value;
         }
 
         public void OnValueChanged()
@@ -53,10 +55,12 @@ namespace Thry.BeerPong
 
         public override void OnDeserialization()
         {
+            if (_localValue == value) return;
             for (int i = 0; i < _remotes.Length; i++) ((UdonBehaviour)_remotes[i].GetComponent(typeof(UdonBehaviour))).SendCustomEvent("Sync");
             _slider.value = value;
             if (_cups != null) _cups.ResetGlassesIfNoneHit();
             if (_bpmain != null) _bpmain.ChangeAmountOfPlayers();
+            _localValue = value;
         }
 
     }
