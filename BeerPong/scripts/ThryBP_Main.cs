@@ -6,7 +6,8 @@ using VRC.SDKBase;
 namespace Thry.BeerPong{
     public class ThryBP_Main : UdonSharpBehaviour
     {
-        private ThryBP_Player[] players;
+        [HideInInspector]
+        public ThryBP_Player[] players;
         public Transform playersParent;
         public Color[] initialPlayerColors;
         public GameObject[] tables;
@@ -24,6 +25,8 @@ namespace Thry.BeerPong{
 
         public Transform respawnHeight;
 
+        public Transform tableHeight;
+
         public Transform cupsCollector;
 
         public bool canHitOwnCups = false;
@@ -35,6 +38,9 @@ namespace Thry.BeerPong{
         public ThryBP_OptionsSelector gamemodeSelection;
 
         public Transform kingOfTheHillParent;
+
+        [HideInInspector]
+        public float aimAssist;
 
         private int teamSize = 1;
         [HideInInspector]

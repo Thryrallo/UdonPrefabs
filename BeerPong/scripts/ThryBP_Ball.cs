@@ -169,7 +169,7 @@ namespace Thry.BeerPong
         const float RIMMING_TOTAL_AGULAR_ROTATION = 3000;
         float lastVelocity;
 
-        private void PostLateUpdate()
+        public override void PostLateUpdate()
         {
             _velocity = (transform.position - _lastPosition) / Time.deltaTime;
             _lastPosition = transform.position;
@@ -420,8 +420,118 @@ namespace Thry.BeerPong
             throwIndicator.gameObject.SetActive(false);
 
             velocity = _rigidbody.velocity;
+
+            if(_mainScript.aimAssist >= 0)
+            {
+                //velocity = Vector3.Lerp(velocity, AimbotVector(velocity, transform.position, _mainScript.tableHeight.position.y), _mainScript.aimAssist);
+                Vector3 aimbot = AimbotVector(velocity, transform.position, _mainScript.tableHeight.position.y);
+                if(aimbot != Vector3.zero)
+                {
+                    velocity = aimbot;
+                    _rigidbody.velocity = velocity;
+                }
+            }
+
             SetState(STATE_FYING);
             RequestSerialization();
+        }
+
+        //=========Prediction==========
+
+        private Vector3 AimbotVector(Vector3 velocity, Vector3 position, float tableHeight)
+        {
+            //Get Point where ball will hit table
+            Vector3 prediction = PredictTableHit(velocity, position, tableHeight);
+            //Debug.Log("Prediction hit on table: " + prediction);
+            //Get Cup closest to that point
+            Vector3 closestGlass = Vector3.zero;
+            float closestDistance = float.MaxValue;
+            for (int p = 0; p < _mainScript.playerCountSlider.value; p++)
+            {
+                float d = 0;
+                foreach (ThryBP_Glass cup in _mainScript.players[p].cups.activeGlassesGameObjects)
+                {
+                    if (cup == null) continue;
+                    d = Vector3.Distance(cup.transform.position, prediction);
+                    if (d < closestDistance)
+                    {
+                        closestDistance = d;
+                        closestGlass = cup.transform.position;
+                    }
+                }
+            }
+            if (closestGlass == Vector3.zero) return Vector3.zero;
+            Debug.Log("Closest cup: " + closestGlass);
+
+            Debug.Log(velocity + " => "+velocity.magnitude);
+            //Calculate trajectory to that cup
+            Vector3 horizonzalDistance = closestGlass - transform.position;
+            horizonzalDistance.y = 0;
+            //https://www.youtube.com/watch?v=bqYtNrhdDAY&ab_channel=MichelvanBiezen
+            float g = -Physics.gravity.y;
+            float v2 = velocity.sqrMagnitude;
+            float x = horizonzalDistance.magnitude;
+            //float h = (tableHeight + _mainScript.players[0].cups.glass.GetBounds().size.y) - position.y;
+            float h = tableHeight - position.y;
+            float phi = Mathf.Atan(x / h);
+            float theta = (Mathf.Acos(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x)) + phi) / 2;
+
+            Debug.Log(g + " ; " + v2 + " ; " + x + " ; " + h);
+            Debug.Log(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x));
+            Debug.Log(Mathf.Sqrt(h * h * x * x));
+            Debug.Log(h * h * x * x);
+            Debug.Log(phi);
+            Debug.Log(theta);
+            Vector3 newVel = (horizonzalDistance.normalized * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta)) * velocity.magnitude;
+            return newVel;
+        }
+
+        private Vector3 PredictTableHit(Vector3 velocity, Vector3 position, float tableHeight)
+        {
+            // Solve quadratic equation: c0*x^2 + c1*x + c2. 
+            float c0 = Physics.gravity.y / 2;
+            float c1 = velocity.y;
+            float c2 = position.y - tableHeight;
+            float[] quadraticOut = new float[2];
+            int quadratic = SolveQuadric(c0, c1, c2, quadraticOut);
+            float t = 0;
+            if (quadratic == 1) t = quadraticOut[0];
+            else if(quadratic == 2 && quadraticOut[0] > 0 && quadraticOut[0] > quadraticOut[1]) t = quadraticOut[0];
+            else if(quadratic == 2 && quadraticOut[1] > 0) t = quadraticOut[1];
+            //Debug.Log("Velocity: " + velocity + ", position: " + position + ", tableHeight: " + tableHeight);
+            //Debug.Log(c0 + "x^2 + " + c1 + "x + " + c2);
+            //Debug.Log(quadratic + "," + quadraticOut[0] + "," + quadraticOut[1]);
+            //Debug.Log("Prediction hit on table: " + prediction + " at time: " + (Time.time + t));
+            return new Vector3(position.x + velocity.x * t, tableHeight, position.z + velocity.z * t);
+        }
+
+        public int SolveQuadric(float c0, float c1, float c2, float[] s)
+        {
+            float p, q, D;
+
+            /* normal form: x^2 + px + q = 0 */
+            p = c1 / (2 * c0);
+            q = c2 / c0;
+
+            D = p * p - q;
+
+            if (D == 0)
+            {
+                s[0] = -p;
+                return 1;
+            }
+            else if (D < 0)
+            {
+                return 0;
+            }
+            else /* if (D > 0) */
+            {
+                float sqrt_D = Mathf.Sqrt(D);
+
+                s[0] = sqrt_D - p;
+                s[1] = -sqrt_D - p;
+                return 2;
+            }
         }
 
         //=========Collision Code======
@@ -534,6 +644,8 @@ namespace Thry.BeerPong
             {
                 PlayAudio(audio_collision_table, lastVelocity / 10);
             }
+
+            Debug.Log("Actual hit: "+ Time.time + " , " + collision.contacts[0].point);
 
             if (Networking.IsOwner(gameObject))
             {

@@ -18,7 +18,7 @@ namespace Thry.BeerPong
         bool[] doesGlassExist = new bool[0];
 
         [HideInInspector]
-        ThryBP_Glass[] activeGlassesGameObjects;
+        public ThryBP_Glass[] activeGlassesGameObjects;
 
         [UdonSynced]
         public float scale = 1;
