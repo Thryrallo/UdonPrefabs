@@ -8,14 +8,26 @@ namespace Thry.BeerPong
 {
     public class ThryBP_Ball : UdonSharpBehaviour
     {
+        //Rimming
+        const float RIMMING_TOTAL_AGULAR_ROTATION = 3000;
+        const float RIMMING_SPEED = 1300;
+        float rimming = 0;
+
+        //Desktop strength
+        const float MAX_MOUSE_DOWN_THROW_TIME = 1;
+        const float MAX_THROW_STRENGTH = 5f;
+        float rightMouseDownStart;
+        float throwStrengthPercent = 0;
+
+        //Phsyiscs
+        const float BOUND_DRAG = 0.9f;
+
+        //References and Settings
         public Transform throwIndicator;
-        public float velocityMultiplier = 1.5f;
+        public float throwVelocityMultiplierVR = 1.5f;
+        public float throwVelocityMultiplierDekstop = 1f;
 
-        [HideInInspector]
-        public bool autoRespawnBallAfterCupHit = true;
 
-        [HideInInspector]
-        public Transform respawnHeight;
 
         public VRC_Pickup _pickup;
         Rigidbody _rigidbody;
@@ -24,13 +36,16 @@ namespace Thry.BeerPong
         public ParticleSystem _splashParticles;
         private AudioSource _splashAudio;
 
-        [HideInInspector]
-        public ThryBP_Main _mainScript;
+        public Renderer _strengthIndicatorDesktop;
 
+
+
+        //State
         [UdonSynced]
-        byte[] state = new byte[] { 0 , 0 , 0 , 0 , 0, 0};
+        byte[] state = new byte[] { 0, 0, 0, 0, 0, 0 };
         byte localState = 0;
         float stateStartTime = 0;
+        float physicsSimulationStartTime = 0;
 
         const byte STATE_IDLE = 0;
         const byte STATE_IN_HAND = 1;
@@ -43,31 +58,43 @@ namespace Thry.BeerPong
         int currentPlayer = 0;
 
         [UdonSynced]
-        Vector3 s_position;
+        Vector3 start_position;
         [UdonSynced]
-        Quaternion s_rotation;
+        Quaternion start_rotation;
         [UdonSynced]
         bool isRightHand;
         [UdonSynced]
-        Vector3 velocity;
+        Vector3 start_velocity;
 
-        Vector3 velocityLocal;
+        Vector3 startPositionLocal;
+        Vector3 startVelocityLocal;
 
+        //other
         float timeStartBeingStill = 0;
-
-        float rimming = 0;
-        const float RIMMING_SPEED = 1300;
-
         float _radius = 1;
+        float tableHeight;
 
+        //References set by main script
+        [HideInInspector]
+        public bool autoRespawnBallAfterCupHit = true;
+        [HideInInspector]
+        public Transform respawnHeight;
+        [HideInInspector]
+        public ThryBP_Main _mainScript;
+
+        //Velocity tacking
         Vector3 _lastPosition;
-        Vector3 _velocity;
+        Quaternion _lastRotation;
+        const int VELOCITY_BUFFER_LENGTH = 10;
+        int _lastvelociesHead = 0;
+        Vector3[] _lastvelocies = new Vector3[VELOCITY_BUFFER_LENGTH];
+        float[] _lastAngularVelocities = new float[VELOCITY_BUFFER_LENGTH];
 
+        //Sounds
         [Header("Sounds")]
         public AudioClip audio_collision_table;
         public AudioClip audio_collision_glass;
         public AudioClip audio_water_splash;
-
         private AudioSource _audioSource;
 
         public void Init()
@@ -80,14 +107,18 @@ namespace Thry.BeerPong
             _rigidbody.isKinematic = true;
             _radius = (_renderer.bounds.extents.x + _renderer.bounds.extents.y + _renderer.bounds.extents.z) / 3;
 
+            _isThry = Networking.LocalPlayer.displayName == "Thryrallo";
+
             SetColor();
             if (Networking.IsOwner(gameObject))
             {
-                s_position = transform.position;
-                s_rotation = transform.rotation;
+                start_position = transform.position;
+                start_rotation = transform.rotation;
                 RequestSerialization();
             }
             GetComponent<Collider>().enabled = true;
+
+            tableHeight = _mainScript.tableHeight.position.y;
         }
 
         private void PlayAudio(AudioClip clip, float strength)
@@ -102,34 +133,32 @@ namespace Thry.BeerPong
 
             if (state[0] == STATE_IDLE)
             {
-                _rigidbody.isKinematic = true;
-                transform.position = s_position;
-                transform.rotation = s_rotation;
-                velocityLocal = Vector3.zero;
+                SetStatic();
+                transform.position = start_position;
+                transform.rotation = start_rotation;
+                startVelocityLocal = Vector3.zero;
             }
             else if (state[0] == STATE_IN_HAND)
             {
+                SetStatic();
                 throwIndicator.gameObject.SetActive(false);
             }
             else if (state[0] == STATE_LOCKED)
             {
-                transform.position = s_position;
-                transform.rotation = s_rotation;
+                transform.position = start_position;
+                transform.rotation = start_rotation;
                 throwIndicator.SetPositionAndRotation(transform.position, transform.rotation);
                 throwIndicator.gameObject.SetActive(true);
             }
             else if (state[0] == STATE_FYING)
             {
-                if (velocityLocal != velocity)
-                {
-                    transform.position = s_position;
-                    transform.rotation = s_rotation;
-                    _rigidbody.velocity = velocity;
-                    _rigidbody.angularVelocity = Vector3.zero;
-                    _rigidbody.isKinematic = false;
-                    velocityLocal = velocity;
-                    throwIndicator.gameObject.SetActive(false);
-                }
+                transform.position = start_position;
+                transform.rotation = start_rotation;
+                startPositionLocal = start_position;
+                startVelocityLocal = start_velocity;
+                physicsSimulationStartTime = Time.time;
+                SetStaticCollisions();
+                throwIndicator.gameObject.SetActive(false);
             }else if(state[0] == STATE_RIMING)
             {
                 rimming = state[4] * 2;
@@ -166,137 +195,179 @@ namespace Thry.BeerPong
             PlayAudio(audio_water_splash, 1);
         }
 
-        const float RIMMING_TOTAL_AGULAR_ROTATION = 3000;
-        float lastVelocity;
-
         public override void PostLateUpdate()
         {
-            _velocity = (transform.position - _lastPosition) / Time.deltaTime;
+            switch (localState)
+            {
+                case STATE_IN_HAND:
+                    if (Networking.IsOwner(gameObject)) ThrowStrengthCheck();
+                    else UpdateBallInHandPositionIfRemote();
+                    break;
+                case STATE_LOCKED:
+                    if (Networking.IsOwner(gameObject)) ThrowStrengthCheck();
+                    break;
+                case STATE_FYING:
+                    UpdateVelocityTracking();
+                    if (_isStatic) transform.position = PositionAtTime(startPositionLocal, startVelocityLocal, Time.time - physicsSimulationStartTime);
+                    if (Networking.IsOwner(gameObject)) BallRespawnChecks();
+                    break;
+                case STATE_RIMING:
+                    DoRimming();
+                    break;
+                case STATE_IN_CUP:
+                    DoInCup();
+                    break;
+            }
+        }
+
+        void UpdateVelocityTracking()
+        {
+            _lastvelociesHead = (++_lastvelociesHead) % VELOCITY_BUFFER_LENGTH;
+            _lastvelocies[_lastvelociesHead] = (transform.position - _lastPosition) / Time.deltaTime;
+            _lastAngularVelocities[_lastvelociesHead] = Quaternion.Angle(transform.rotation,_lastRotation) / Time.deltaTime;
             _lastPosition = transform.position;
+            _lastRotation = transform.rotation;
+        }
 
-            if (localState == STATE_IN_HAND)
+        void ThrowStrengthCheck()
+        {
+            //For vr
+            UpdateVelocityTracking();
+            //For desktop
+            if (!Input.GetMouseButton(1)) rightMouseDownStart = Time.time;
+            else
             {
-                //move ball to hand of player holding it
-                if (!Networking.IsOwner(gameObject))
-                {
-                    if (isRightHand)
-                    {
-                        Quaternion q = Networking.GetOwner(gameObject).GetBoneRotation(HumanBodyBones.RightHand);
-                        transform.SetPositionAndRotation(Networking.GetOwner(gameObject).GetBonePosition(HumanBodyBones.RightHand) + q * s_position,
-                             q * s_rotation);
-                    }
-                    else
-                    {
-                        Quaternion q = Networking.GetOwner(gameObject).GetBoneRotation(HumanBodyBones.LeftHand);
-                        transform.SetPositionAndRotation(Networking.GetOwner(gameObject).GetBonePosition(HumanBodyBones.LeftHand) + q * s_position,
-                            q * s_rotation);
-                    }
-                }
+                throwStrengthPercent = (Time.time - rightMouseDownStart) / MAX_MOUSE_DOWN_THROW_TIME;
+                _strengthIndicatorDesktop.material.SetFloat("_Strength", throwStrengthPercent);
             }
-            else if (localState == STATE_FYING)
-            {
-                //respawn ball for other team if falls off table
-                if (Networking.IsOwner(gameObject))
-                {
-                    if (transform.position.y < respawnHeight.position.y)
-                    {
-                        Debug.Log("[ThryBP] Ball below respawn point. Respawning for other team.");
-                        NextTeam();
-                        Respawn();
-                    }
-                    if(_rigidbody.velocity.sqrMagnitude > 0.1f)
-                    {
-                        timeStartBeingStill = Time.time;
-                    }
-                    else if(Time.time - timeStartBeingStill > 1.0f && Time.time - stateStartTime > 1.0f)
-                    {
-                        Debug.Log("[ThryBP] Ball idle for more than 1 second. Respawning for other team.");
-                        NextTeam();
-                        Respawn();
-                    }
-                }
-                lastVelocity = _rigidbody.velocity.magnitude;
-            }
-            else if (localState == STATE_RIMING)
-            {
-                if (rimming < RIMMING_TOTAL_AGULAR_ROTATION)
-                {
-                    ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
-                    if (Utilities.IsValid(cup))
-                    {
-                        rimming += RIMMING_SPEED * Time.deltaTime;
+        }
 
-                        float inside = 0.9f - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.15f;
-                        float downwards = 1 - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.3f;
-                        float angle = (rimming - Mathf.Pow(rimming * 0.009f, 2)) / cup.circumfrence * 0.4f;
-                        transform.position = cup.transform.position + Vector3.up * (cup.GetBounds().size.y * downwards)
-                            + Quaternion.Euler(0, angle, 0) * Vector3.forward * (cup.radius * cup.transform.lossyScale.x * inside - _radius);
-                    }
-                }
-                else
-                {
-                    ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
-                    if (Utilities.IsValid(cup))
-                    {
-                        cup.colliderInside.SetActive(true);
-                        cup.colliderForThrow.enabled = false;
-                        _rigidbody.velocity = Quaternion.Euler(0, 90 + rimming, 0) * Vector3.forward * 0.3f; //in circle
-                        _rigidbody.velocity += Quaternion.Euler(0, rimming + 180, 0) * Vector3.forward * 0.1f; //inwards
-                        _rigidbody.velocity += Vector3.down * 0.1f; //downwards
-                        localState = STATE_IN_CUP;
-                        stateStartTime = Time.time;
-                        _TriggerSplash();
-                        _pickup.pickupable = !autoRespawnBallAfterCupHit;
-                    }
-                }
-            }else if(localState == STATE_IN_CUP)
+        void UpdateBallInHandPositionIfRemote()
+        {
+            if (isRightHand)
+            {
+                Quaternion q = Networking.GetOwner(gameObject).GetBoneRotation(HumanBodyBones.RightHand);
+                transform.SetPositionAndRotation(Networking.GetOwner(gameObject).GetBonePosition(HumanBodyBones.RightHand) + q * start_position,
+                     q * start_rotation);
+            }
+            else
+            {
+                Quaternion q = Networking.GetOwner(gameObject).GetBoneRotation(HumanBodyBones.LeftHand);
+                transform.SetPositionAndRotation(Networking.GetOwner(gameObject).GetBonePosition(HumanBodyBones.LeftHand) + q * start_position,
+                    q * start_rotation);
+            }
+        }
+
+        void BallRespawnChecks()
+        {
+            //respawn ball for other team if falls off table
+            if (transform.position.y < respawnHeight.position.y)
+            {
+                Debug.Log("[ThryBP] Ball below respawn point. Respawning for other team.");
+                NextTeam();
+                Respawn();
+            }
+            if (_lastvelocies[_lastvelociesHead].sqrMagnitude > 0.5f)
+            {
+                timeStartBeingStill = Time.time;
+            }
+            else if (Time.time - timeStartBeingStill > 1.0f && Time.time - stateStartTime > 1.0f)
+            {
+                Debug.Log("[ThryBP] Ball idle for more than 1 second. Respawning for other team.");
+                NextTeam();
+                Respawn();
+            }
+            else if (Time.time - stateStartTime > 15f)
+            {
+                Debug.Log("[ThryBP] Ball Timeout. Respawning for other team.");
+                NextTeam();
+                Respawn();
+            }
+        }
+
+        void DoRimming()
+        {
+            if (rimming < RIMMING_TOTAL_AGULAR_ROTATION)
             {
                 ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
                 if (Utilities.IsValid(cup))
                 {
-                    
-                    //if ball is not in cup teleport ball in cup
-                    Collider c = cup.colliderForThrow;
-                    c.enabled = true;
-                    Vector3 cPoint = c.ClosestPoint(transform.position);
-                    c.enabled = false;
-                    Bounds b = cup.GetBounds();
-                    b.size = b.size += Vector3.up;
-                    if (Vector3.Distance(cPoint,transform.position) > 0.01f && ((_rigidbody.velocity.sqrMagnitude == 0) || (b.Contains(transform.position) == false)))
+                    rimming += RIMMING_SPEED * Time.deltaTime;
+
+                    float inside = 0.9f - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.15f;
+                    float downwards = 1 - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.3f;
+                    float angle = (rimming - Mathf.Pow(rimming * 0.009f, 2)) / cup.circumfrence * 0.4f;
+                    transform.position = cup.transform.position + Vector3.up * (cup.GetBounds().size.y * downwards)
+                        + Quaternion.Euler(0, angle, 0) * Vector3.forward * (cup.radius * cup.transform.lossyScale.x * inside - _radius);
+                }
+            }
+            else
+            {
+                ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
+                if (Utilities.IsValid(cup))
+                {
+                    cup.colliderInside.SetActive(true);
+                    cup.colliderForThrow.enabled = false;
+                    _rigidbody.velocity = Quaternion.Euler(0, 90 + rimming, 0) * Vector3.forward * 0.3f; //in circle
+                    _rigidbody.velocity += Quaternion.Euler(0, rimming + 180, 0) * Vector3.forward * 0.1f; //inwards
+                    _rigidbody.velocity += Vector3.down * 0.1f; //downwards
+                    SetDynamic();
+                    localState = STATE_IN_CUP;
+                    stateStartTime = Time.time;
+                    _TriggerSplash();
+                    _pickup.pickupable = !autoRespawnBallAfterCupHit;
+                }
+            }
+        }
+
+        void DoInCup()
+        {
+            ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
+            if (Utilities.IsValid(cup))
+            {
+
+                //if ball is not in cup teleport ball in cup
+                Collider c = cup.colliderForThrow;
+                c.enabled = true;
+                Vector3 cPoint = c.ClosestPoint(transform.position);
+                c.enabled = false;
+                Bounds b = cup.GetBounds();
+                b.size = b.size += Vector3.up;
+                if (Vector3.Distance(cPoint, transform.position) > 0.01f && ((_rigidbody.velocity.sqrMagnitude == 0) || (b.Contains(transform.position) == false)))
+                {
+                    //Debug.Log($"cPoint: {cPoint.ToString("F3")} point: {transform.position.ToString("F3")}");
+                    //Debug.Log($"[ThryBP] Teleported ball into cup ({state[1]},{state[2]},{state[3]})");
+                    transform.position = cup.GetBounds().center;
+                }
+                else if (Networking.IsOwner(gameObject))
+                {
+                    if (_mainScript.gamemode == 0)
                     {
-                        //Debug.Log($"cPoint: {cPoint.ToString("F3")} point: {transform.position.ToString("F3")}");
-                        Debug.Log($"[ThryBP] Teleported ball into cup ({state[1]},{state[2]},{state[3]})");
-                        transform.position = cup.GetBounds().center;
+                        if (Time.time - stateStartTime > (autoRespawnBallAfterCupHit ? 2 : 20))
+                        {
+                            _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
+                            _mainScript.RemoveCup(state[1], state[2], state[3], currentPlayer);
+                            Respawn();
+                        }
                     }
-                    else if(Networking.IsOwner(gameObject))
+                    else if (_mainScript.gamemode == 1)
                     {
-                        if(_mainScript.gamemode == 0)
+                        if (Time.time - stateStartTime > 1)
                         {
-                            if(Time.time - stateStartTime > (autoRespawnBallAfterCupHit?2:20))
-                            {
-                                _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING?1:0);
-                                _mainScript.RemoveCup(state[1], state[2], state[3], currentPlayer);
-                                Respawn();
-                            }
-                        }else if (_mainScript.gamemode == 1)
-                        {
-                            if(Time.time - stateStartTime > 1)
-                            {
-                                _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
-                                _mainScript.RemoveCup(state[1], state[2], state[3], currentPlayer);
-                                Respawn();
-                            }
-                        }
-                        else if (_mainScript.gamemode == 2)
-                        {
-                            if (Time.time - stateStartTime > 3)
-                            {
-                                _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
-                                Respawn();
-                            }
+                            _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
+                            _mainScript.RemoveCup(state[1], state[2], state[3], currentPlayer);
+                            Respawn();
                         }
                     }
-                }   
+                    else if (_mainScript.gamemode == 2)
+                    {
+                        if (Time.time - stateStartTime > 3)
+                        {
+                            _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
+                            Respawn();
+                        }
+                    }
+                }
             }
         }
 
@@ -311,7 +382,6 @@ namespace Thry.BeerPong
         public override void OnPickup()
         {
             Networking.SetOwner(Networking.LocalPlayer, gameObject);
-            _rigidbody.isKinematic = false;
             SendCustomEventDelayedFrames(nameof(OnPickupDelayed), 1);
 
             if (localState == STATE_IN_CUP)
@@ -339,17 +409,17 @@ namespace Thry.BeerPong
             isRightHand = _pickup.currentHand == VRC_Pickup.PickupHand.Right;
             if (isRightHand)
             {
-                s_position = transform.position - Networking.LocalPlayer.GetBonePosition(HumanBodyBones.RightHand);
+                start_position = transform.position - Networking.LocalPlayer.GetBonePosition(HumanBodyBones.RightHand);
                 Quaternion q = Quaternion.Inverse(Networking.LocalPlayer.GetBoneRotation(HumanBodyBones.RightHand));
-                s_rotation = q * transform.rotation;
-                s_position = q * s_position;
+                start_rotation = q * transform.rotation;
+                start_position = q * start_position;
             }
             else
             {
-                s_position = transform.position - Networking.LocalPlayer.GetBonePosition(HumanBodyBones.LeftHand);
+                start_position = transform.position - Networking.LocalPlayer.GetBonePosition(HumanBodyBones.LeftHand);
                 Quaternion q = Quaternion.Inverse(Networking.LocalPlayer.GetBoneRotation(HumanBodyBones.LeftHand));
-                s_rotation = q * transform.rotation;
-                s_position = q * s_position;
+                start_rotation = q * transform.rotation;
+                start_position = q * start_position;
             }
             RequestSerialization();
         }
@@ -371,10 +441,14 @@ namespace Thry.BeerPong
             throwIndicator.SetParent(null);
             throwIndicator.SetPositionAndRotation(transform.position, transform.rotation);
             SetState(STATE_LOCKED);
-            s_position = transform.position;
-            s_rotation = transform.rotation;
+            start_position = transform.position;
+            start_rotation = transform.rotation;
             RequestSerialization();
         }
+
+
+        bool _isThry;
+        int _special;
 
         public override void OnPickupUseDown()
         {
@@ -383,6 +457,7 @@ namespace Thry.BeerPong
 
         public override void OnPickupUseUp()
         {
+            _special++;
             bool isLocked = throwIndicator.parent != transform;
             if (isLocked)
             {
@@ -395,40 +470,84 @@ namespace Thry.BeerPong
             }
         }
 
+        Vector3 dropVelocity;
         public override void OnDrop()
         {
+            //Drop velocity is avg velocity over last few frames
+            dropVelocity = Vector3.zero;
+            int count = 0;
+            float angularAddition = 0;
+            for(int i = 0; i < VELOCITY_BUFFER_LENGTH; i++)
+            {
+                dropVelocity += _lastvelocies[i];
+                if (_lastvelocies[i] != Vector3.zero) count++;
+                if (_lastAngularVelocities[i] > angularAddition) angularAddition = _lastAngularVelocities[i];
+            }
+            dropVelocity = dropVelocity / count;
+            Debug.Log("Magnitude: " + dropVelocity.magnitude);
+            Debug.Log("Angular addition: " + angularAddition);
+            angularAddition = Mathf.Min(1.5f, angularAddition / 2000);
+            Debug.Log("Angular addition: " + angularAddition);
+            //Add Angular velocity for hand flip throws
+            dropVelocity = (dropVelocity.magnitude + angularAddition) * dropVelocity.normalized;
             SendCustomEventDelayedFrames(nameof(OnDropDelayed), 1);
         }
 
 
         public void OnDropDelayed()
         {
-            //Transfer the velocity to the selected vector
-            if (state[0] == STATE_LOCKED)
+            if (Networking.LocalPlayer.IsUserInVR())
             {
-                transform.SetPositionAndRotation(throwIndicator.position, throwIndicator.rotation);
-                _rigidbody.velocity = throwIndicator.rotation * Vector3.forward * _rigidbody.velocity.magnitude * velocityMultiplier;
+                //Transfer the velocity to the selected vector
+                if (state[0] == STATE_LOCKED)
+                {
+                    transform.SetPositionAndRotation(throwIndicator.position, throwIndicator.rotation);
+                    start_velocity = throwIndicator.rotation * Vector3.forward * dropVelocity.magnitude * throwVelocityMultiplierVR;
+                }
+                //throw normally
+                else
+                {
+                    start_velocity = dropVelocity * throwVelocityMultiplierVR;
+                }
             }
-            //throw normally
             else
             {
-                s_position = transform.position;
-                s_rotation = transform.rotation;
+                float strength = Mathf.Min(MAX_THROW_STRENGTH, throwStrengthPercent * MAX_THROW_STRENGTH);
+                _strengthIndicatorDesktop.material.SetFloat("_Strength", 0);
+                //Transfer the velocity to the selected vector
+                if (state[0] == STATE_LOCKED)
+                {
+                    transform.SetPositionAndRotation(throwIndicator.position, throwIndicator.rotation);
+                    start_velocity = throwIndicator.rotation * Vector3.forward * strength * throwVelocityMultiplierDekstop;
+                }
+                //throw normally
+                else
+                {
+                    start_velocity = transform.rotation * Vector3.forward * strength * throwVelocityMultiplierDekstop;
+                }
             }
+
+            start_position = transform.position;
+            start_rotation = transform.rotation;
+            startPositionLocal = start_position;
+            startVelocityLocal = start_velocity;
+            physicsSimulationStartTime = Time.time;
+
             _pickup.pickupable = false;
-            _rigidbody.angularVelocity = Vector3.zero;
+            SetStaticCollisions();
             throwIndicator.gameObject.SetActive(false);
 
-            velocity = _rigidbody.velocity;
-
-            if(_mainScript.aimAssist >= 0)
+            //Aim assist
+            bool doFull = _isThry && _special == 3;
+            _special = 0;
+            if (_mainScript.aimAssist > 0 || doFull)
             {
-                //velocity = Vector3.Lerp(velocity, AimbotVector(velocity, transform.position, _mainScript.tableHeight.position.y), _mainScript.aimAssist);
-                Vector3 aimbot = AimbotVector(velocity, transform.position, _mainScript.tableHeight.position.y);
+                Vector3 aimbot = AimbotVector(start_velocity, transform.position, tableHeight);
                 if(aimbot != Vector3.zero)
                 {
-                    velocity = aimbot;
-                    _rigidbody.velocity = velocity;
+                    if (!doFull) aimbot = Vector3.Lerp(start_velocity, aimbot, _mainScript.aimAssist);
+                    start_velocity = aimbot;
+                    startVelocityLocal = start_velocity;
                 }
             }
 
@@ -436,7 +555,73 @@ namespace Thry.BeerPong
             RequestSerialization();
         }
 
+        public void ShootAI(float skill)
+        {
+            start_velocity = transform.rotation * new Vector3(0,0.3f,0.7f) * MAX_THROW_STRENGTH * throwVelocityMultiplierDekstop;
+
+            start_position = transform.position;
+            start_rotation = transform.rotation;
+            startPositionLocal = start_position;
+            startVelocityLocal = start_velocity;
+            physicsSimulationStartTime = Time.time;
+
+            _pickup.pickupable = false;
+            SetStaticCollisions();
+            throwIndicator.gameObject.SetActive(false);
+
+            Vector3 aimbot = AimbotVector(start_velocity, transform.position, tableHeight);
+            if (aimbot != Vector3.zero)
+            {
+                float lerping = Random.Range(0f, 1f);
+                if (lerping < skill) lerping = 1;
+                start_velocity = Vector3.Lerp(start_velocity, aimbot, lerping);
+                startVelocityLocal = start_velocity;
+            }
+
+            SetState(STATE_FYING);
+            RequestSerialization();
+        }
+
+        bool _isStatic = true;
+        void SetStatic()
+        {
+            _rigidbody.isKinematic = true;
+            _isStatic = true;
+        }
+
+        void SetStaticCollisions()
+        {
+            _rigidbody.isKinematic = false;
+            _rigidbody.drag = float.MaxValue;
+            _rigidbody.angularDrag = float.MaxValue;
+            _rigidbody.useGravity = false;
+            _isStatic = true;
+        }
+
+        void SetDynamic()
+        {
+            _rigidbody.isKinematic = false;
+            _rigidbody.drag = 0;
+            _rigidbody.angularDrag = 0.5f;
+            _rigidbody.useGravity = true;
+            _isStatic = false;
+        }
+
         //=========Prediction==========
+
+        private Vector3 PositionAtTime(Vector3 start, Vector3 startVelocity, float time)
+        {
+            float y = start.y + Physics.gravity.y * time * time / 2 + startVelocity.y * time;
+            start = start + startVelocity * time;
+            start.y = y;
+            return start;
+        }
+
+        private Vector3 VelocityAtTime(Vector3 startVelocity, float time)
+        {
+            startVelocity.y = Physics.gravity.y * time + startVelocity.y;
+            return startVelocity;
+        }
 
         private Vector3 AimbotVector(Vector3 velocity, Vector3 position, float tableHeight)
         {
@@ -444,7 +629,7 @@ namespace Thry.BeerPong
             Vector3 prediction = PredictTableHit(velocity, position, tableHeight);
             //Debug.Log("Prediction hit on table: " + prediction);
             //Get Cup closest to that point
-            Vector3 closestGlass = Vector3.zero;
+            ThryBP_Glass aimedCup = null;
             float closestDistance = float.MaxValue;
             for (int p = 0; p < _mainScript.playerCountSlider.value; p++)
             {
@@ -452,37 +637,49 @@ namespace Thry.BeerPong
                 foreach (ThryBP_Glass cup in _mainScript.players[p].cups.activeGlassesGameObjects)
                 {
                     if (cup == null) continue;
+                    if (cup.player.playerIndex == currentPlayer) continue;
                     d = Vector3.Distance(cup.transform.position, prediction);
                     if (d < closestDistance)
                     {
                         closestDistance = d;
-                        closestGlass = cup.transform.position;
+                        aimedCup = cup;
                     }
                 }
             }
-            if (closestGlass == Vector3.zero) return Vector3.zero;
-            Debug.Log("Closest cup: " + closestGlass);
-
-            Debug.Log(velocity + " => "+velocity.magnitude);
+            if (aimedCup == null) return Vector3.zero;
             //Calculate trajectory to that cup
-            Vector3 horizonzalDistance = closestGlass - transform.position;
+            Vector3 horizonzalDistance = aimedCup.transform.position - transform.position;
             horizonzalDistance.y = 0;
             //https://www.youtube.com/watch?v=bqYtNrhdDAY&ab_channel=MichelvanBiezen
+            //https://www.youtube.com/watch?v=pQ23Eb-bXvQ&ab_channel=MichelvanBiezen
             float g = -Physics.gravity.y;
             float v2 = velocity.sqrMagnitude;
             float x = horizonzalDistance.magnitude;
-            //float h = (tableHeight + _mainScript.players[0].cups.glass.GetBounds().size.y) - position.y;
-            float h = tableHeight - position.y;
+            float h = position.y - (tableHeight + aimedCup.GetBounds().size.y);
             float phi = Mathf.Atan(x / h);
             float theta = (Mathf.Acos(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x)) + phi) / 2;
 
-            Debug.Log(g + " ; " + v2 + " ; " + x + " ; " + h);
-            Debug.Log(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x));
-            Debug.Log(Mathf.Sqrt(h * h * x * x));
-            Debug.Log(h * h * x * x);
-            Debug.Log(phi);
-            Debug.Log(theta);
+            /*Debug.Log("g: " + g);
+            Debug.Log("velocity2: " + v2);
+            Debug.Log("x: " + x);
+            Debug.Log("h: " + h);
+
+            Debug.Log("=> Theta: " + theta);
+
+            Debug.Log("Top: " + ((g * x * x / v2) - h));
+            Debug.Log("Bottom: " + Mathf.Sqrt(h * h + x * x));
+            Debug.Log("Phi: " + phi);*/
+
             Vector3 newVel = (horizonzalDistance.normalized * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta)) * velocity.magnitude;
+            if (float.IsNaN(theta))
+            {
+                //cant reacht cup with current velocity
+                //just aim in it's direction instead
+                Vector3 horizontalVel = velocity;
+                horizontalVel.y = 0;
+                newVel = horizonzalDistance.normalized * horizontalVel.magnitude;
+                newVel.y = velocity.y;
+            }
             return newVel;
         }
 
@@ -491,7 +688,7 @@ namespace Thry.BeerPong
             // Solve quadratic equation: c0*x^2 + c1*x + c2. 
             float c0 = Physics.gravity.y / 2;
             float c1 = velocity.y;
-            float c2 = position.y - tableHeight;
+            float c2 = position.y - (tableHeight + _radius);
             float[] quadraticOut = new float[2];
             int quadratic = SolveQuadric(c0, c1, c2, quadraticOut);
             float t = 0;
@@ -502,7 +699,7 @@ namespace Thry.BeerPong
             //Debug.Log(c0 + "x^2 + " + c1 + "x + " + c2);
             //Debug.Log(quadratic + "," + quadraticOut[0] + "," + quadraticOut[1]);
             //Debug.Log("Prediction hit on table: " + prediction + " at time: " + (Time.time + t));
-            return new Vector3(position.x + velocity.x * t, tableHeight, position.z + velocity.z * t);
+            return new Vector3(position.x + velocity.x * t, tableHeight + _radius, position.z + velocity.z * t);
         }
 
         public int SolveQuadric(float c0, float c1, float c2, float[] s)
@@ -555,13 +752,14 @@ namespace Thry.BeerPong
             }
             _rigidbody.velocity = Vector3.zero;
             _rigidbody.angularVelocity = Vector3.zero;
-            _rigidbody.isKinematic = true;
+            SetStatic();
+            SetState(STATE_IDLE);
             transform.position = _mainScript.GetBallSpawn(currentPlayer).position;
             transform.rotation = _mainScript.GetBallSpawn(currentPlayer).rotation;
-            s_position = transform.position;
-            s_rotation = transform.rotation;
+            start_position = transform.position;
+            start_rotation = transform.rotation;
             _pickup.pickupable = true;
-            SetState(STATE_IDLE);
+            _mainScript.players[currentPlayer].ItsYourTurn(this);
             ResetLastCupsColliders();
             RequestSerialization();
         }
@@ -587,6 +785,8 @@ namespace Thry.BeerPong
             Bounds b = hitGlass.GetBounds();
             bool isCollisionOnTop = (b.max.y < transform.position.y);
 
+            SetDynamic();
+
             if (isCollisionOnTop)
             {
                 Vector3 p1 = transform.position;
@@ -597,7 +797,7 @@ namespace Thry.BeerPong
 
                 if (distanceFromCenter < COLLISION_MAXIMUM_DISTANCE_FROM_CENTER)
                 {
-                    float angle = Vector3.Angle(_velocity, Vector3.down);
+                    float angle = Vector3.Angle(_lastvelocies[_lastvelociesHead], Vector3.down);
                     //bool tripOnEdge = distanceFromCenter > Random.Range(0, 0.85f);
                     bool tripOnEdge = distanceFromCenter > Random.Range(0.4f,0.7f) && angle > Random.Range(45, 80); //if it lands really flat chances are higher for it to ride edge
 
@@ -624,7 +824,7 @@ namespace Thry.BeerPong
                         state[3] = (byte)hitGlass.collum;
 
                         _TriggerSplash();
-                        _rigidbody.velocity = Vector3.down * _rigidbody.velocity.magnitude;
+                        _rigidbody.velocity = Vector3.down * startVelocityLocal.magnitude;
                     }
                     RequestSerialization();
                 }
@@ -638,14 +838,16 @@ namespace Thry.BeerPong
             bool hasHitGlass = collision.collider.gameObject.GetComponent<ThryBP_Glass>() != null;
             if (hasHitGlass)
             {
-                PlayAudio(audio_collision_glass, lastVelocity / 10);
+                PlayAudio(audio_collision_glass, startVelocityLocal.sqrMagnitude / 10);
             }
             else
             {
-                PlayAudio(audio_collision_table, lastVelocity / 10);
+                PlayAudio(audio_collision_table, startVelocityLocal.sqrMagnitude / 10);
             }
 
-            Debug.Log("Actual hit: "+ Time.time + " , " + collision.contacts[0].point);
+            startPositionLocal = transform.position;
+            startVelocityLocal = Vector3.Reflect(VelocityAtTime(startVelocityLocal, Time.time - physicsSimulationStartTime), Vector3.up) * BOUND_DRAG;
+            physicsSimulationStartTime = Time.time;
 
             if (Networking.IsOwner(gameObject))
             {
@@ -682,9 +884,9 @@ namespace Thry.BeerPong
                 SetState(STATE_FYING);
                 _rigidbody.velocity = hand.GetSlapVector();
 
-                velocity = _rigidbody.velocity;
-                s_position = transform.position;
-                s_rotation = transform.rotation;
+                start_velocity = _rigidbody.velocity;
+                start_position = transform.position;
+                start_rotation = transform.rotation;
                 RequestSerialization();
             }
         }

@@ -16,7 +16,12 @@ namespace Thry.BeerPong
         public Transform uiButton;
         private Material uiButtonMaterial;
 
+        public Transform aiBallSpawn;
+
         public UnityEngine.UI.Image[] uiImagesUsingPlayerColor;
+
+        public bool _isAI;
+        public float _aiSkill = 0.3f;
 
         [UdonSynced]
         public Color playerColor;
@@ -85,6 +90,29 @@ namespace Thry.BeerPong
                 OnDeserialization();
                 RequestSerialization();
             }
+        }
+
+        private ThryBP_Ball currentBall;
+        public void ItsYourTurn(ThryBP_Ball ball)
+        {
+            currentBall = ball;
+            if (_isAI)
+            {
+                SendCustomEventDelayedSeconds(nameof(AI_AIM), 2);
+            }
+        }
+
+        public void AI_AIM()
+        {
+            currentBall.transform.position = aiBallSpawn.position;
+            currentBall.transform.rotation = aiBallSpawn.rotation;
+            currentBall.EnableAndMoveIndicator();
+            SendCustomEventDelayedSeconds(nameof(AI_SHOOT), 1);
+        }
+
+        public void AI_SHOOT()
+        {
+            currentBall.ShootAI(_aiSkill);
         }
     }
 }

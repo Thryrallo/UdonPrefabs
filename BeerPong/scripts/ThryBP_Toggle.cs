@@ -21,7 +21,8 @@ namespace Thry.BeerPong {
         private void Start()
         {
             _ui = GetComponent<UnityEngine.UI.Toggle>();
-            if(_ui != null)
+            _localValue = value;
+            if (_ui != null)
             {
                 _ui.isOn = value;
             }

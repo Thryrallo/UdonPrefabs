@@ -62,12 +62,17 @@ namespace Thry.General
 
         //Slider
         public Slider _uiSlider;
+        public Text _uiSliderHandleText;
+        public string _uiSliderHandlePrefix;
+        public string _uiSliderHandlePostfix;
 
         //Action Togggles
         public GameObject[] toggleObjects;
         public GameObject[] toggleObjectsInverted;
         public VRC_Pickup[] togglePickups;
         public Collider[] toggleColliders;
+        //Action Teleport
+        public Transform teleportTarget;
         //Action Script Calls
         public GameObject[] udonBehaviours;
         public string[] udonEventNames;
@@ -104,7 +109,7 @@ namespace Thry.General
             //Do null check for toggle and slider
             if (actionType == ACTION_TYPE_TOGGLE)
             {
-                if(_uiToggle == null)
+                if (_uiToggle == null)
                 {
 
                     Debug.LogError($"[ThryAction][{name}] _uiToggle is null");
@@ -124,7 +129,7 @@ namespace Thry.General
             }
             if (actionType == ACTION_TYPE_SLIDER)
             {
-                if(_uiSlider == null)
+                if (_uiSlider == null)
                 {
                     Debug.LogError($"[ThryAction][{name}] _uiSlider is null");
                     actionType = 0;
@@ -152,7 +157,7 @@ namespace Thry.General
                 _master.RegisterRemote(this);
                 SyncValuesFromMaster();
                 //If has bool or float, make sure it is set everywhere
-                if(actionType == ACTION_TYPE_SLIDER || actionType == ACTION_TYPE_TOGGLE)
+                if (actionType == ACTION_TYPE_SLIDER || actionType == ACTION_TYPE_TOGGLE)
                 {
                     _ExecuteNormalActions();
                 }
@@ -194,7 +199,11 @@ namespace Thry.General
         public void OnInteraction()
         {
             if (doBlockOnInteract) return;
-            if (specialActionType == 0 && IsNormalRequirementMet()) _UpdateValuesAndExecuteNormals();
+            if (specialActionType == 0)
+            {
+                if (IsNormalRequirementMet()) _UpdateValuesAndExecuteNormals();
+                else _ResetUI();
+            }
             if (specialActionType == 1 && IsMirrorRequirementMet()) _ExecuteMirror();
         }
 
@@ -234,7 +243,7 @@ namespace Thry.General
             {
                 //Open new mirror
                 //Turn old mirror off
-                if(selectedMirror != selected)
+                if (selectedMirror != selected)
                 {
                     if (selectedMirror != null) selectedMirror.gameObject.SetActive(false);
                     selectedMirror = selected;
@@ -305,7 +314,7 @@ namespace Thry.General
         public void _UpdateValuesAndExecuteNormals()
         {
             //Let Master handle it
-            if(hiveType == HIVE_REMOTE)
+            if (hiveType == HIVE_REMOTE)
             {
                 if (actionType == ACTION_TYPE_SLIDER) _master._uiSlider.value = _uiSlider.value;
                 else if (actionType == ACTION_TYPE_TOGGLE) _master._uiToggle.isOn = _uiToggle.isOn;
@@ -317,6 +326,12 @@ namespace Thry.General
                 _ExecuteNormalActions();
                 SyncRemotesIfHiveAndMaster();
             }
+        }
+
+        public void _ResetUI()
+        {
+            if (actionType == ACTION_TYPE_SLIDER) _uiSlider.value = local_float;
+            else if (actionType == ACTION_TYPE_TOGGLE) _uiToggle.isOn = local_bool;
         }
 
         private void SyncRemotesIfHiveAndMaster()
@@ -412,6 +427,7 @@ namespace Thry.General
         private void _ExecuteFloatOnlyActions()
         {
             ExecuteAnimatorsFloat();
+            if (_uiSliderHandleText != null) _uiSliderHandleText.text = _uiSliderHandlePrefix + local_float + _uiSliderHandlePostfix;
         }
 
         //For actions that can be synced using bool
@@ -427,11 +443,12 @@ namespace Thry.General
 
             ExecuteToggles();
             ExecuteAnimatorsBool();
+            if (teleportTarget != null) Networking.LocalPlayer.TeleportTo(teleportTarget.position, teleportTarget.rotation);
         }
 
         private void ExecuteUdonBehaviours()
         {
-            for(int i=0;i<udonBehaviours.Length;i++)
+            for (int i = 0; i < udonBehaviours.Length; i++)
             {
                 if (Utilities.IsValid(udonBehaviours[i]))
                 {
@@ -439,19 +456,20 @@ namespace Thry.General
                     if (Utilities.IsValid(u))
                     {
                         //Set Value
-                        if (i < udonValueNames.Length) {
+                        if (i < udonValueNames.Length)
+                        {
                             if (actionType == ACTION_TYPE_TOGGLE) u.SetProgramVariable(udonValueNames[i], _uiToggle.isOn);
                             else if (actionType == ACTION_TYPE_SLIDER) u.SetProgramVariable(udonValueNames[i], _uiSlider.value);
                         }
-                        if(i < udonEventNames.Length) u.SendCustomEvent(udonEventNames[i]);
+                        if (i < udonEventNames.Length) u.SendCustomEvent(udonEventNames[i]);
                     }
                 }
             }
         }
-    
+
         private void ExecuteToggles()
         {
-            if(actionType == ACTION_TYPE_TOGGLE)
+            if (actionType == ACTION_TYPE_TOGGLE)
             {
                 foreach (GameObject o in toggleObjects) o.SetActive(local_bool);
                 foreach (GameObject o in toggleObjectsInverted) o.SetActive(!local_bool);
@@ -459,7 +477,7 @@ namespace Thry.General
                 foreach (VRC_Pickup p in togglePickups) p.pickupable = local_bool;
             }
             //Used to make sure the toggles are synced
-            else if(prev_local_bool != local_bool)
+            else if (prev_local_bool != local_bool)
             {
                 foreach (GameObject o in toggleObjects) o.SetActive(!o.activeSelf);
                 foreach (Collider c in toggleColliders) c.enabled = !c.enabled;
@@ -471,9 +489,10 @@ namespace Thry.General
         {
             for (int i = 0; i < animators.Length; i++)
             {
-                if (animators[i] != null && animatorParameterNames[i].Length > 0){
+                if (animators[i] != null && animatorParameterNames[i].Length > 0)
+                {
                     if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Trigger) animators[i].SetTrigger(animatorParameterNames[i]);
-                }    
+                }
             }
         }
 
@@ -562,6 +581,12 @@ namespace Thry.General
                 serialUIObj = new SerializedObject(uiObjToAddCall);
             }
 
+            UdonBehaviour u = action.GetComponent<UdonBehaviour>();
+            if(u != null)
+            {
+                u.SyncMethod = Networking.SyncType.Manual;
+            }
+
             EditorUtility.SetDirty(target);
 
             //Add call
@@ -637,6 +662,12 @@ namespace Thry.General
             }else if(actionType == ActionType.Slider)
             {
                 action._uiSlider = (Slider)EditorGUILayout.ObjectField(new GUIContent("Slider"), action._uiSlider, typeof(Slider), true);
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField("Handle:");
+                action._uiSliderHandlePrefix = EditorGUILayout.TextField(action._uiSliderHandlePrefix);
+                action._uiSliderHandleText = (Text)EditorGUILayout.ObjectField(action._uiSliderHandleText, typeof(Text), true);
+                action._uiSliderHandlePostfix = EditorGUILayout.TextField(action._uiSliderHandlePostfix);
+                EditorGUILayout.EndHorizontal();
             }
 
             GUISyncing();
@@ -890,6 +921,7 @@ namespace Thry.General
                 if(actionType == ActionType.Toggle) ArrayGUI(nameof(action.toggleObjectsInverted), "Toggle GameObjects Inverted");
                 ArrayGUI(nameof(action.toggleColliders), "Toggle Colliders");
                 ArrayGUI(nameof(action.togglePickups), "Toggle Pickups");
+                action.teleportTarget = (Transform)EditorGUILayout.ObjectField(new GUIContent("Teleport to"), action.teleportTarget, typeof(Transform), true);
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Udon Calls", EditorStyles.boldLabel);
                 if (actionType == ActionType.Slider || actionType == ActionType.Toggle)
