@@ -51,6 +51,9 @@ namespace Thry.General
         public bool local_bool;
         public float local_float;
 
+        public float _local_float_transformed;
+        public bool _useFloatCurve;
+        public AnimationCurve _floatCurve;
 
         //Clapper
         public bool isClapperAction;
@@ -122,8 +125,8 @@ namespace Thry.General
                     UdonBehaviour u = (UdonBehaviour)udonBehaviours[i].GetComponent(typeof(UdonBehaviour));
                     if (Utilities.IsValid(u))
                     {
-                        if (i < udonEventNames.Length && udonEventNames[i]!=null && udonEventNames[i].Length > 0) eventB++;
-                        if (i < udonValueNames.Length && udonValueNames[i]!=null && udonValueNames[i].Length > 0)
+                        if (i < udonEventNames.Length && udonEventNames[i] != null && udonEventNames[i].Length > 0) eventB++;
+                        if (i < udonValueNames.Length && udonValueNames[i] != null && udonValueNames[i].Length > 0)
                         {
                             if (u.GetProgramVariableType(udonValueNames[i]) == typeof(float)) floatB++;
                             if (u.GetProgramVariableType(udonValueNames[i]) == typeof(int)) intB++;
@@ -144,7 +147,7 @@ namespace Thry.General
                     UdonBehaviour u = (UdonBehaviour)udonBehaviours[i].GetComponent(typeof(UdonBehaviour));
                     if (Utilities.IsValid(u))
                     {
-                        if (i < udonEventNames.Length && udonEventNames[i]!=null && udonEventNames[i].Length > 0)
+                        if (i < udonEventNames.Length && udonEventNames[i] != null && udonEventNames[i].Length > 0)
                         {
                             udon_event_Behvaiours[eventB] = udonBehaviours[i];
                             udon_event_Names[eventB++] = udonEventNames[i];
@@ -243,11 +246,12 @@ namespace Thry.General
         {
             if (!hasAdapter) return;
             doBlockOnInteract = true; //Block interaction to prevent the ui triggering another OnInteraction event
-            if(actionType == ACTION_TYPE_BOOL)
+            if (actionType == ACTION_TYPE_BOOL)
             {
                 _adapter.SetProgramVariable("local_bool", local_bool);
                 _adapter.SendCustomEvent("SetLocalBool");
-            }else if(actionType == ACTION_TYPE_FLOAT)
+            }
+            else if (actionType == ACTION_TYPE_FLOAT)
             {
                 _adapter.SetProgramVariable("local_float", local_float);
                 _adapter.SendCustomEvent("SetLocalFloat");
@@ -257,10 +261,6 @@ namespace Thry.General
 
         public bool _UpdateFromAdapter()
         {
-            Debug.Log("Adapter: " + hasAdapter);
-            Debug.Log("Type: " + actionType);
-            Debug.Log("Local: " + local_bool);
-            Debug.Log("Sync: " + synced_bool);
             if (!hasAdapter) return false;
             if (actionType == ACTION_TYPE_BOOL)
             {
@@ -288,11 +288,9 @@ namespace Thry.General
 
         public void OnInteraction()
         {
-            Debug.Log("Block:" + doBlockOnInteract);
             if (doBlockOnInteract) return;
             if (specialActionType == 0)
             {
-                Debug.Log("Req: " + IsNormalRequirementMet());
                 if (IsNormalRequirementMet()) UpdateAndExecuteOnInteraction();
                 else _UpdateToAdapter();
             }
@@ -450,7 +448,6 @@ namespace Thry.General
 
         private void UpdateAndExecuteOnInteraction_Execute()
         {
-            Debug.Log("Execute");
             //Let Master handle it if remote
             if (hiveType == HIVE_REMOTE)
             {
@@ -502,7 +499,7 @@ namespace Thry.General
 
         private void ExecuteUdonEvents()
         {
-            for(int i = 0; i < udon_event_Behvaiours.Length; i++)
+            for (int i = 0; i < udon_event_Behvaiours.Length; i++)
             {
                 ((UdonBehaviour)udon_event_Behvaiours[i].GetComponent(typeof(UdonBehaviour))).SendCustomEvent(udon_event_Names[i]);
             }
@@ -533,13 +530,22 @@ namespace Thry.General
             {
                 UpdateBoolAnimators();
                 UpdateBoolToggles();
+
+                UpdateUdonValuesBool();
             }
-            else if(actionType == ACTION_TYPE_FLOAT)
+            else if (actionType == ACTION_TYPE_FLOAT)
             {
+                if (_useFloatCurve)
+                    _local_float_transformed = _floatCurve.Evaluate(local_float);
+                else
+                    _local_float_transformed = local_float;
+
                 UpdateFloatAnimators();
                 UpdateBoolToggles();
+
+                UpdateUdonValuesFloat();
+                UpdateUdonValuesBool();
             }
-            UpdateUdonValues();
         }
 
         private void UpdateBoolAnimators()
@@ -559,8 +565,8 @@ namespace Thry.General
             {
                 if (animators[i] != null && animatorParameterNames[i].Length > 0)
                 {
-                    if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Float) animators[i].SetFloat(animatorParameterNames[i], local_float);
-                    else if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Int) animators[i].SetInteger(animatorParameterNames[i], (int)local_float);
+                    if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Float) animators[i].SetFloat(animatorParameterNames[i], _local_float_transformed);
+                    else if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Int) animators[i].SetInteger(animatorParameterNames[i], (int)_local_float_transformed);
                 }
             }
         }
@@ -580,19 +586,23 @@ namespace Thry.General
             foreach (VRC_Pickup p in togglePickups) p.pickupable = !p.pickupable;
         }
 
-        private void UpdateUdonValues()
+        private void UpdateUdonValuesBool()
         {
             for (int i = 0; i < udon_bool_Behvaiours.Length; i++)
             {
                 ((UdonBehaviour)udon_bool_Behvaiours[i].GetComponent(typeof(UdonBehaviour))).SetProgramVariable(udon_bool_Names[i], local_bool);
             }
+        }
+
+        private void UpdateUdonValuesFloat()
+        {
             for (int i = 0; i < udon_float_Behvaiours.Length; i++)
             {
-                ((UdonBehaviour)udon_float_Behvaiours[i].GetComponent(typeof(UdonBehaviour))).SetProgramVariable(udon_float_Names[i], local_float);
+                ((UdonBehaviour)udon_float_Behvaiours[i].GetComponent(typeof(UdonBehaviour))).SetProgramVariable(udon_float_Names[i], _local_float_transformed);
             }
             for (int i = 0; i < udon_int_Behvaiours.Length; i++)
             {
-                ((UdonBehaviour)udon_int_Behvaiours[i].GetComponent(typeof(UdonBehaviour))).SetProgramVariable(udon_int_Names[i], (int)local_float);
+                ((UdonBehaviour)udon_int_Behvaiours[i].GetComponent(typeof(UdonBehaviour))).SetProgramVariable(udon_int_Names[i], (int)_local_float_transformed);
             }
         }
     }
@@ -602,7 +612,7 @@ namespace Thry.General
     [CustomEditor(typeof(ThryAction))]
     public class ThryActionEditor : Editor
     {
-        enum ActionType { Event, Bool, Float}
+        enum ActionType { Event, Bool, Float }
         enum SpecialBehaviourType { Normal, MirrorManager }
         enum HiveType { None, Master, Remote }
 
@@ -634,7 +644,7 @@ namespace Thry.General
             AutoAddComponents();
 
             Transform t = action.transform.parent;
-            while(t != null)
+            while (t != null)
             {
                 if (t.GetComponent<Thry.Clapper.Clapper>() != null) showClapperGUI = true;
                 t = t.parent;
@@ -647,7 +657,7 @@ namespace Thry.General
 
         UdonSharpBehaviour GetAdapter<T>()
         {
-            UdonBehaviour adapter = action.GetComponents<UdonBehaviour>().Where(udon => udon.programSource!= null && udon.programSource.GetType() == typeof(UdonSharpProgramAsset) && 
+            UdonBehaviour adapter = action.GetComponents<UdonBehaviour>().Where(udon => udon.programSource != null && udon.programSource.GetType() == typeof(UdonSharpProgramAsset) &&
                 (udon.programSource as UdonSharpProgramAsset).sourceCsScript.GetClass() == typeof(T)).FirstOrDefault();
             if (adapter != null) return UdonSharpEditorUtility.GetProxyBehaviour(adapter);
             adapter = action.GetComponents<UdonBehaviour>().Where(udon => udon.programSource == null).FirstOrDefault();
@@ -655,7 +665,7 @@ namespace Thry.General
             {
                 adapter = action.gameObject.AddComponent<UdonBehaviour>();
             }
-            string[] guids = AssetDatabase.FindAssets(typeof(T).Name+ " t:UdonSharpProgramAsset");
+            string[] guids = AssetDatabase.FindAssets(typeof(T).Name + " t:UdonSharpProgramAsset");
             if (guids.Length > 0)
             {
                 UdonSharpProgramAsset udonProgram = (UdonSharpProgramAsset)AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guids[0]));
@@ -697,7 +707,7 @@ namespace Thry.General
                 adapter._uiToggle = action.GetComponent<Toggle>();
                 UdonSharpEditorUtility.CopyProxyToUdon(adapter);
             }
-            else if(action.GetComponent<Button>() != null)
+            else if (action.GetComponent<Button>() != null)
             {
                 action.actionType = 0;
 
@@ -716,7 +726,7 @@ namespace Thry.General
                 bool hasCall = false;
 
                 SerializedProperty serialPropCalls = null;
-                if      (uiObjToAddCall.GetType() == typeof(Slider)) serialPropCalls = serialUIObj.FindProperty("m_OnValueChanged.m_PersistentCalls.m_Calls");
+                if (uiObjToAddCall.GetType() == typeof(Slider)) serialPropCalls = serialUIObj.FindProperty("m_OnValueChanged.m_PersistentCalls.m_Calls");
                 else if (uiObjToAddCall.GetType() == typeof(Toggle)) serialPropCalls = serialUIObj.FindProperty("onValueChanged.m_PersistentCalls.m_Calls");
                 else if (uiObjToAddCall.GetType() == typeof(Button)) serialPropCalls = serialUIObj.FindProperty("m_OnClick.m_PersistentCalls.m_Calls");
 
@@ -735,7 +745,7 @@ namespace Thry.General
                 if (!hasCall)
                 {
                     UnityAction<string> methodDelegate = UnityAction.CreateDelegate(typeof(UnityAction<string>), UdonSharpEditorUtility.GetBackingUdonBehaviour(action), typeof(UdonBehaviour).GetMethod(nameof(UdonBehaviour.SendCustomEvent))) as UnityAction<string>;
-                    if      (uiObjToAddCall.GetType() == typeof(Slider)) UnityEventTools.AddStringPersistentListener(((Slider)uiObjToAddCall).onValueChanged, methodDelegate, nameof(action.OnInteraction));
+                    if (uiObjToAddCall.GetType() == typeof(Slider)) UnityEventTools.AddStringPersistentListener(((Slider)uiObjToAddCall).onValueChanged, methodDelegate, nameof(action.OnInteraction));
                     else if (uiObjToAddCall.GetType() == typeof(Toggle)) UnityEventTools.AddStringPersistentListener(((Toggle)uiObjToAddCall).onValueChanged, methodDelegate, nameof(action.OnInteraction));
                     else if (uiObjToAddCall.GetType() == typeof(Button)) UnityEventTools.AddStringPersistentListener(((Button)uiObjToAddCall).onClick, methodDelegate, nameof(action.OnInteraction));
                 }
@@ -765,7 +775,7 @@ namespace Thry.General
             EditorGUI.BeginChangeCheck();
 
             behaviourType = (SpecialBehaviourType)EditorGUILayout.EnumPopup("Special Behaviour", (SpecialBehaviourType)action.specialActionType);
-            if(behaviourType == SpecialBehaviourType.Normal)
+            if (behaviourType == SpecialBehaviourType.Normal)
                 actionType = (ActionType)EditorGUILayout.EnumPopup("Type", (ActionType)action.actionType);
 
             if (EditorGUI.EndChangeCheck())
@@ -781,7 +791,7 @@ namespace Thry.General
                 else if (actionType == ActionType.Float) action.local_float = EditorGUILayout.FloatField("Float", action.local_float);
             }
 
-            if(showClapperGUI)
+            if (showClapperGUI)
             {
                 ClapperGUI();
             }
@@ -938,7 +948,7 @@ namespace Thry.General
                 this.unityA = null;
                 this.intA = null;
                 this.floatA = null;
-                this.stringA = a==null?new string[0]:a;
+                this.stringA = a == null ? new string[0] : a;
                 this.enumType = null;
             }
 
@@ -953,22 +963,25 @@ namespace Thry.General
 
             public void NewLength(int l)
             {
-                if(type == 0)
+                if (type == 0)
                 {
                     UnityEngine.Object[] old = unityA;
                     unityA = (UnityEngine.Object[])Array.CreateInstance(unityA.GetType().GetElementType(), l);
                     Array.Copy(old, unityA, Math.Min(l, old.Length));
-                }else if (type == 1)
+                }
+                else if (type == 1)
                 {
                     int[] old = intA;
                     intA = new int[l];
                     Array.Copy(old, intA, Math.Min(l, old.Length));
-                }else if (type == 2)
+                }
+                else if (type == 2)
                 {
                     float[] old = floatA;
                     floatA = new float[l];
                     Array.Copy(old, floatA, Math.Min(l, old.Length));
-                }else if (type == 3)
+                }
+                else if (type == 3)
                 {
                     string[] old = stringA;
                     stringA = new string[l];
@@ -979,7 +992,7 @@ namespace Thry.General
             public Enum GetEnumValue(int index)
             {
                 int i = intA[index];
-                if(Enum.IsDefined(enumType, i) == false)
+                if (Enum.IsDefined(enumType, i) == false)
                 {
                     i = 0;
                 }
@@ -992,7 +1005,8 @@ namespace Thry.General
             EditorGUI.BeginChangeCheck();
             int length = EditorGUILayout.IntField(arrays[0].Length());
 
-            if(EditorGUI.EndChangeCheck() || arrays.Any(a => a.Length() < length)){
+            if (EditorGUI.EndChangeCheck() || arrays.Any(a => a.Length() < length))
+            {
                 for (int i = 0; i < arrays.Length; i++)
                 {
                     arrays[i].NewLength(length);
@@ -1028,14 +1042,29 @@ namespace Thry.General
             if (headerAct)
             {
                 EditorGUI.indentLevel += 1;
+
+                if (actionType == ActionType.Float)
+                {
+                    action._useFloatCurve = EditorGUILayout.Toggle("Use Curve", action._useFloatCurve);
+                    if (action._useFloatCurve)
+                    {
+                        if (action._floatCurve == null)
+                        {
+                            action._floatCurve = AnimationCurve.Linear(0, 0, 1, 1);
+                        }
+                        EditorGUI.BeginChangeCheck();
+                        action._floatCurve = EditorGUILayout.CurveField("Float Transformation Curve", action._floatCurve);
+                    }
+                }
+
                 ArrayGUI(nameof(action.toggleObjects), "Toggle GameObjects");
-                if(actionType == ActionType.Bool) ArrayGUI(nameof(action.toggleObjectsInverted), "Toggle GameObjects Inverted");
+                if (actionType == ActionType.Bool) ArrayGUI(nameof(action.toggleObjectsInverted), "Toggle GameObjects Inverted");
                 ArrayGUI(nameof(action.toggleColliders), "Toggle Colliders");
                 ArrayGUI(nameof(action.togglePickups), "Toggle Pickups");
                 action.teleportTarget = (Transform)EditorGUILayout.ObjectField(new GUIContent("Teleport to"), action.teleportTarget, typeof(Transform), true);
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Udon Calls", EditorStyles.boldLabel);
-                if (actionType == ActionType.Bool|| actionType == ActionType.Float)
+                if (actionType == ActionType.Bool || actionType == ActionType.Float)
                 {
                     ArrayData[] arrays = ArraysGUI(
                         new ArrayData("Udon Behaviour", "", action.udonBehaviours, typeof(GameObject)),

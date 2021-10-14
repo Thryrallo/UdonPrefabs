@@ -23,7 +23,6 @@ namespace Thry.General
         public void GetLocalBool()
         {
             local_bool = _uiToggle.isOn;
-            Debug.Log("GetLocalBool: " + local_bool);
         }
 
         public void GetLocalFloat()

@@ -1,4 +1,6 @@
 ﻿
+using Thry.Clapper;
+using Thry.General;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -877,12 +879,12 @@ namespace Thry.BeerPong
         {
             if (collider == null || collider.gameObject == null) return;
 
-            if (localState == STATE_RIMING && collider.gameObject.GetComponent<ThryBP_HandCollider>() != null)
+            if (localState == STATE_RIMING && collider.gameObject.GetComponent<HandCollider>() != null)
             {
-                ThryBP_HandCollider hand = collider.gameObject.GetComponent<ThryBP_HandCollider>();
+                HandCollider hand = collider.gameObject.GetComponent<HandCollider>();
                 Networking.SetOwner(Networking.LocalPlayer, gameObject);
                 SetState(STATE_FYING);
-                _rigidbody.velocity = hand.GetSlapVector();
+                _rigidbody.velocity = hand._velocity;
 
                 start_velocity = _rigidbody.velocity;
                 start_position = transform.position;
