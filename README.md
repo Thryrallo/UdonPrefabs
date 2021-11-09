@@ -11,6 +11,9 @@ She has done a lot of the artwork and 3d modeling for my prefabs.
 * https://tsuna.dev/
 
 # UdonPrefabs
+* ### Beer Pong
+Advanced Beer Pong with tons of features. Different gamemodes, advanced syncing, cup reracking, more than 2 players etc.
+
 * ### Spin the Bottle
 Bottle Spin that spins smoothly on local and remote clients.
 Has the ability of having random players selected as targets instead of just a random angle.
