@@ -24,3 +24,4 @@ This is an old prefabs. I got a more up to date version locally, but i would lik
 # Assets by Tsuna
 
 * ### Bottle Spin Bottle (3d Model + Texture)
+* ### Beer Pong Table
