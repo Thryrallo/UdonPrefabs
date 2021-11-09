@@ -2,6 +2,8 @@
 If you use my prefabs in your vrchat world i would really appricate a small crediting.
 I have spent a lot of time on them and am providing them for free.
 
+# [Discord Server all my Assets](https://discord.thryrallo.de/)
+
 ## Credit to Tsuna (Tsuna#1184)
 She has done a lot of the artwork and 3d modeling for my prefabs.
 * Discord: https://discord.gg/bDWEYUw
