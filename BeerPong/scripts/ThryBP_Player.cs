@@ -104,8 +104,7 @@ namespace Thry.BeerPong
 
         public void AI_AIM()
         {
-            currentBall.transform.position = aiBallSpawn.position;
-            currentBall.transform.rotation = aiBallSpawn.rotation;
+            currentBall.SetPositionRotation(aiBallSpawn.position, aiBallSpawn.rotation);
             currentBall.EnableAndMoveIndicator();
             SendCustomEventDelayedSeconds(nameof(AI_SHOOT), 1);
         }

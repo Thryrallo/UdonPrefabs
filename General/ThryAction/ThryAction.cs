@@ -15,6 +15,7 @@ using System.Linq;
 
 namespace Thry.General
 {
+    [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class ThryAction : UdonSharpBehaviour
     {
         const int ACTION_TYPE_EVENT = 0;
@@ -28,15 +29,6 @@ namespace Thry.General
         const int SPECIAL_ACTION_TYPE_MIRROR_MANAGER = 1;
 
         public int specialActionType;
-
-        //Special Sync type
-        const int HIVE_NONE = 0;
-        const int HIVE_MASTER = 1;
-        const int HIVE_REMOTE = 2;
-
-        public int hiveType;
-        public ThryAction _master;
-        public ThryAction[] _remotes;
 
         //Syncing
         public bool is_synced;
@@ -67,6 +59,7 @@ namespace Thry.General
         public Collider[] toggleColliders;
         //Action Teleport
         public Transform teleportTarget;
+        public bool teleport_specialDoorCalculation;
         //Action Script Calls
         public GameObject[] udonBehaviours;
         public string[] udonEventNames;
@@ -105,8 +98,7 @@ namespace Thry.General
         public float maximumOpenDistance = 5;
 
         //Adapter
-        UdonBehaviour _adapter;
-        bool hasAdapter;
+        Component[] _adapters = new Component[0];
 
         private Transform selectedMirror;
 
@@ -180,28 +172,9 @@ namespace Thry.General
             foreach (string n in autherizedPlayerDisplayNames) if (localName == n) isAutherizedPlayer = true;
             if (autherizedPlayerDisplayNames.Length == 0) isAutherizedPlayer = true;
 
-            //==>Others
-            foreach (Component u in gameObject.GetComponents(typeof(UdonBehaviour)))
-            {
-                if (u != this && true.Equals(((UdonBehaviour)u).GetProgramVariable("_isThryAdapter")))
-                {
-                    _adapter = (UdonBehaviour)u;
-                    hasAdapter = true;
-                }
-            }
+            UpdateAllAdapterValues();
 
-            //Update values
-            _UpdateFromAdapter();
-
-            //Register remote client
-            if (hiveType == HIVE_REMOTE)
-            {
-                _master.RegisterRemote(this);
-                _master.PublicInit();//make sure master is initalized before getting it's data
-                SyncValuesFromMaster();
-            }
-
-            Serialize();
+            if(Networking.IsOwner(gameObject)) Serialize();
 
             //Update all reference values
             _UpdateValues();
@@ -227,64 +200,33 @@ namespace Thry.General
             UpdateFloatAnimators();
         }
 
-        public void RegisterRemote(ThryAction r)
+        private void UpdateAdapter(Component c)
         {
-            if (_remotes == null)
-            {
-                _remotes = new ThryAction[1];
-            }
-            else
-            {
-                ThryAction[] old = _remotes;
-                _remotes = new ThryAction[old.Length + 1];
-                Array.Copy(old, _remotes, old.Length);
-            }
-            _remotes[_remotes.Length - 1] = r;
+            UdonBehaviour u = (UdonBehaviour)c;
+            u.SetProgramVariable("local_bool", local_bool);
+            u.SendCustomEvent("SetAdapterBool");
+            u.SetProgramVariable("local_float", local_float);
+            u.SendCustomEvent("SetAdapterFloat");
         }
 
-        public void _UpdateToAdapter()
+        public void UpdateAllAdapterValues()
         {
-            if (!hasAdapter) return;
-            doBlockOnInteract = true; //Block interaction to prevent the ui triggering another OnInteraction event
-            if (actionType == ACTION_TYPE_BOOL)
+            foreach(Component c in _adapters)
             {
-                _adapter.SetProgramVariable("local_bool", local_bool);
-                _adapter.SendCustomEvent("SetLocalBool");
+                UpdateAdapter(c);
             }
-            else if (actionType == ACTION_TYPE_FLOAT)
-            {
-                _adapter.SetProgramVariable("local_float", local_float);
-                _adapter.SendCustomEvent("SetLocalFloat");
-            }
-            doBlockOnInteract = false;
         }
 
-        public bool _UpdateFromAdapter()
+        public void RegsiterAdapter(Component c)
         {
-            if (!hasAdapter) return false;
-            if (actionType == ACTION_TYPE_BOOL)
-            {
-                bool prev = local_bool;
-                _adapter.SendCustomEvent("GetLocalBool");
-                local_bool = (bool)_adapter.GetProgramVariable("local_bool");
-                return prev != local_bool;
-            }
-            else if (actionType == ACTION_TYPE_FLOAT)
-            {
-                float prev = local_float;
-                _adapter.SendCustomEvent("GetLocalFloat");
-                local_float = (float)_adapter.GetProgramVariable("local_float");
-                return prev != local_float;
-            }
-            return false;
+            Component[] temp = _adapters;
+            _adapters = new Component[temp.Length + 1];
+            Array.Copy(temp, _adapters, temp.Length);
+            _adapters[temp.Length] = c;
+            UpdateAdapter(c);
         }
 
         //========Exposed Call==========
-
-        public override void Interact()
-        {
-            OnInteraction();
-        }
 
         public void OnInteraction()
         {
@@ -292,7 +234,7 @@ namespace Thry.General
             if (specialActionType == 0)
             {
                 if (IsNormalRequirementMet()) UpdateAndExecuteOnInteraction();
-                else _UpdateToAdapter();
+                else UpdateAllAdapterValues();
             }
             if (specialActionType == 1 && IsMirrorRequirementMet()) _ExecuteMirror();
         }
@@ -390,7 +332,7 @@ namespace Thry.General
             if (hasStartNotRun) Init(); // In case it is called in start before this start has been called
             prev_local_bool = local_bool;
             local_bool = b;
-            _UpdateToAdapter();
+            local_float = b ? 1 : 0;
             UpdateAndExecuteOnInteraction_Execute();
         }
 
@@ -399,7 +341,7 @@ namespace Thry.General
             if (hasStartNotRun) Init(); // In case it is called in start before this start has been called
             prev_local_bool = local_bool;
             local_float = f;
-            _UpdateToAdapter();
+            local_bool = f == 1;
             UpdateAndExecuteOnInteraction_Execute();
         }
 
@@ -424,69 +366,26 @@ namespace Thry.General
             doBlockOnInteract = true;
             local_float = synced_float;
             local_bool = synced_bool;
-            _UpdateToAdapter();
+            UpdateAllAdapterValues();
             _UpdateValues();
             ExecuteEvents();
-            SyncRemotesIfHiveAndMaster();
             doBlockOnInteract = false;
         }
 
         private void UpdateAndExecuteOnInteraction()
         {
             prev_local_bool = local_bool;
-            if (!UpdateAndExecuteOnInteraction_Update()) return;
-            UpdateAndExecuteOnInteraction_Execute();
-        }
-
-        private bool UpdateAndExecuteOnInteraction_Update()
-        {
-            //Update the values from adapter if avaialbe
-            if (hasAdapter) return _UpdateFromAdapter();
             local_bool = !local_bool;
-            return true;
+            local_float = local_bool ? 1 : 0;
+            UpdateAndExecuteOnInteraction_Execute();
         }
 
         private void UpdateAndExecuteOnInteraction_Execute()
         {
-            //Let Master handle it if remote
-            if (hiveType == HIVE_REMOTE)
-            {
-                _master.local_bool = local_bool;
-                _master.local_float = local_float;
-                _master._UpdateToAdapter();
-                _master.UpdateAndExecuteOnInteraction_ExecuteMaster();
-                return;
-            }
-            UpdateAndExecuteOnInteraction_ExecuteMaster();
-        }
-
-        public void UpdateAndExecuteOnInteraction_ExecuteMaster()
-        {
             Serialize();
+            UpdateAllAdapterValues();
             _UpdateValues();
             ExecuteEvents();
-            SyncRemotesIfHiveAndMaster();
-        }
-
-        private void SyncRemotesIfHiveAndMaster()
-        {
-            //Sync to remote actions
-            if (hiveType == HIVE_MASTER)
-            {
-                foreach (ThryAction a in _remotes)
-                {
-                    a.SyncValuesFromMaster();
-                }
-            }
-        }
-
-        public void SyncValuesFromMaster()
-        {
-            prev_local_bool = _master.prev_local_bool;
-            local_float = _master.local_float;
-            local_bool = _master.local_bool;
-            _UpdateToAdapter();
-            _UpdateValues();
         }
 
         private void ExecuteEvents()
@@ -494,7 +393,32 @@ namespace Thry.General
             ExecuteAnimatorsTrigger();
             ExecuteUdonEvents();
 
-            if (teleportTarget != null) Networking.LocalPlayer.TeleportTo(teleportTarget.position, teleportTarget.rotation);
+            if (teleportTarget != null)
+            {
+                if (teleport_specialDoorCalculation)
+                {
+                    Vector3 originalPosition = Networking.LocalPlayer.GetPosition();
+                    Quaternion originalRotation = Networking.LocalPlayer.GetRotation();
+                    Vector3 originalVelocity = Networking.LocalPlayer.GetVelocity();
+
+                    Quaternion inverse = Quaternion.Inverse(transform.rotation);
+                    Vector3 relativePosition = inverse * (originalPosition - transform.position);
+                    Quaternion relativeRotation = inverse * originalRotation;
+                    Vector3 relativeVelcotiy = Quaternion.Inverse(originalRotation) * originalVelocity;
+
+                    Vector3 newPosition = teleportTarget.position + teleportTarget.rotation * (relativePosition + Vector3.back * 0.1f); //Move a little extra to make sure you dont teleport into other collider.
+                    Quaternion newRotation = teleportTarget.rotation * relativeRotation * Quaternion.Euler(0,180,0);
+                    Vector3 newVelocity = newRotation * relativeVelcotiy;
+
+                    Networking.LocalPlayer.TeleportTo(newPosition, newRotation);
+                    Networking.LocalPlayer.SetVelocity(newVelocity);
+                }
+                else
+                {
+                    Networking.LocalPlayer.TeleportTo(teleportTarget.position, teleportTarget.rotation);
+                    Networking.LocalPlayer.SetVelocity((teleportTarget.rotation * Quaternion.Inverse(Networking.LocalPlayer.GetRotation())) * Networking.LocalPlayer.GetVelocity());
+                }
+            }
         }
 
         private void ExecuteUdonEvents()
@@ -625,8 +549,6 @@ namespace Thry.General
 
         bool showClapperGUI;
 
-        bool hasAdapter;
-
         bool isNotInit = true;
         GUIStyle headerStyle;
 
@@ -650,22 +572,37 @@ namespace Thry.General
                 t = t.parent;
             }
 
-            hasAdapter = action.gameObject.GetComponents<UdonBehaviour>().Where(u => u.programSource.name.ToLower().Contains("adapter")).Count() > 0;
-
             isNotInit = false;
         }
 
-        UdonSharpBehaviour GetAdapter<T>()
+        public static bool MakeSureItsAnUdonBehaviour(UdonSharpBehaviour udonSharpBehaviour)
         {
-            UdonBehaviour adapter = action.GetComponents<UdonBehaviour>().Where(udon => udon.programSource != null && udon.programSource.GetType() == typeof(UdonSharpProgramAsset) &&
-                (udon.programSource as UdonSharpProgramAsset).sourceCsScript.GetClass() == typeof(T)).FirstOrDefault();
+            //if not udon behaviour
+            if (UdonSharpEditor.UdonSharpEditorUtility.GetBackingUdonBehaviour(udonSharpBehaviour) == null)
+            {
+                GetUdonBehaviour(udonSharpBehaviour.GetType(), udonSharpBehaviour.gameObject);
+                DestroyImmediate(udonSharpBehaviour);
+                return false;
+            }
+            return true;
+        }
+
+        public static UdonSharpBehaviour GetAdapter<T>(GameObject gameObject)
+        {
+            return GetUdonBehaviour(typeof(T), gameObject);
+        }
+
+        public static UdonSharpBehaviour GetUdonBehaviour(Type udonSharpType, GameObject gameObject)
+        {
+            UdonBehaviour adapter = gameObject.GetComponents<UdonBehaviour>().Where(udon => udon.programSource != null && udon.programSource.GetType() == typeof(UdonSharpProgramAsset) &&
+                (udon.programSource as UdonSharpProgramAsset).sourceCsScript.GetClass() == udonSharpType).FirstOrDefault();
             if (adapter != null) return UdonSharpEditorUtility.GetProxyBehaviour(adapter);
-            adapter = action.GetComponents<UdonBehaviour>().Where(udon => udon.programSource == null).FirstOrDefault();
+            adapter = gameObject.GetComponents<UdonBehaviour>().Where(udon => udon.programSource == null).FirstOrDefault();
             if (adapter == null)
             {
-                adapter = action.gameObject.AddComponent<UdonBehaviour>();
+                adapter = gameObject.AddComponent<UdonBehaviour>();
             }
-            string[] guids = AssetDatabase.FindAssets(typeof(T).Name + " t:UdonSharpProgramAsset");
+            string[] guids = AssetDatabase.FindAssets(udonSharpType.Name + " t:UdonSharpProgramAsset");
             if (guids.Length > 0)
             {
                 UdonSharpProgramAsset udonProgram = (UdonSharpProgramAsset)AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guids[0]));
@@ -683,9 +620,10 @@ namespace Thry.General
         {
             MonoBehaviour uiObjToAddCall = null;
             SerializedObject serialUIObj = null;
+            UdonBehaviour behaviourToCall = null;
             if (action.GetComponent<Slider>() != null)
             {
-                UI_Slider_Adapter adapter = (UI_Slider_Adapter)GetAdapter<UI_Slider_Adapter>();
+                TA_Slider adapter = (TA_Slider)GetAdapter<TA_Slider>(action.gameObject);
 
                 uiObjToAddCall = action.GetComponent<Slider>();
                 serialUIObj = new SerializedObject(uiObjToAddCall);
@@ -693,11 +631,14 @@ namespace Thry.General
                 action.actionType = (int)ActionType.Float;
 
                 adapter._uiSlider = action.GetComponent<Slider>();
+                adapter.action = action;
+
+                behaviourToCall = UdonSharpEditorUtility.GetBackingUdonBehaviour(adapter);
                 UdonSharpEditorUtility.CopyProxyToUdon(adapter);
             }
             else if (action.GetComponent<Toggle>() != null)
             {
-                UI_Toggle_Adapter adapter = (UI_Toggle_Adapter)GetAdapter<UI_Toggle_Adapter>();
+                TA_Toggle adapter = (TA_Toggle)GetAdapter<TA_Toggle>(action.gameObject);
 
                 uiObjToAddCall = action.GetComponent<Toggle>();
                 serialUIObj = new SerializedObject(uiObjToAddCall);
@@ -705,6 +646,9 @@ namespace Thry.General
                 action.actionType = (int)ActionType.Bool;
 
                 adapter._uiToggle = action.GetComponent<Toggle>();
+                adapter.action = action;
+
+                behaviourToCall = UdonSharpEditorUtility.GetBackingUdonBehaviour(adapter);
                 UdonSharpEditorUtility.CopyProxyToUdon(adapter);
             }
             else if (action.GetComponent<Button>() != null)
@@ -713,6 +657,8 @@ namespace Thry.General
 
                 uiObjToAddCall = action.GetComponent<Button>();
                 serialUIObj = new SerializedObject(uiObjToAddCall);
+
+                behaviourToCall = UdonSharpEditorUtility.GetBackingUdonBehaviour(action);
             }
 
             foreach (UdonBehaviour u in action.GetComponents<UdonBehaviour>())
@@ -721,7 +667,7 @@ namespace Thry.General
             EditorUtility.SetDirty(target);
 
             //Add call
-            if (serialUIObj != null)
+            if (serialUIObj != null && behaviourToCall != null)
             {
                 bool hasCall = false;
 
@@ -735,7 +681,7 @@ namespace Thry.General
                     for (int i = 0; i < serialPropCalls.arraySize; i++)
                     {
                         SerializedProperty item = serialPropCalls.GetArrayElementAtIndex(i);
-                        if (item.FindPropertyRelative("m_Target").objectReferenceValue == UdonSharpEditorUtility.GetBackingUdonBehaviour(action)
+                        if (item.FindPropertyRelative("m_Target").objectReferenceValue == behaviourToCall
                             && item.FindPropertyRelative("m_MethodName").stringValue == nameof(UdonBehaviour.SendCustomEvent)
                             && item.FindPropertyRelative("m_Arguments") != null
                             && item.FindPropertyRelative("m_Arguments.m_StringArgument").stringValue == nameof(action.OnInteraction))
@@ -744,7 +690,7 @@ namespace Thry.General
                 }
                 if (!hasCall)
                 {
-                    UnityAction<string> methodDelegate = UnityAction.CreateDelegate(typeof(UnityAction<string>), UdonSharpEditorUtility.GetBackingUdonBehaviour(action), typeof(UdonBehaviour).GetMethod(nameof(UdonBehaviour.SendCustomEvent))) as UnityAction<string>;
+                    UnityAction<string> methodDelegate = UnityAction.CreateDelegate(typeof(UnityAction<string>), behaviourToCall, typeof(UdonBehaviour).GetMethod(nameof(UdonBehaviour.SendCustomEvent))) as UnityAction<string>;
                     if (uiObjToAddCall.GetType() == typeof(Slider)) UnityEventTools.AddStringPersistentListener(((Slider)uiObjToAddCall).onValueChanged, methodDelegate, nameof(action.OnInteraction));
                     else if (uiObjToAddCall.GetType() == typeof(Toggle)) UnityEventTools.AddStringPersistentListener(((Toggle)uiObjToAddCall).onValueChanged, methodDelegate, nameof(action.OnInteraction));
                     else if (uiObjToAddCall.GetType() == typeof(Button)) UnityEventTools.AddStringPersistentListener(((Button)uiObjToAddCall).onClick, methodDelegate, nameof(action.OnInteraction));
@@ -760,11 +706,12 @@ namespace Thry.General
         public override void OnInspectorGUI()
         {
             // Draws the default convert to UdonBehaviour button, program asset field, sync settings, etc.
-            if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
+            //if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
 
             serializedObject.Update();
 
             action = (ThryAction)target;
+            if (ThryActionEditor.MakeSureItsAnUdonBehaviour(action) == false) return;
 
             if (isNotInit) Init();
 
@@ -785,7 +732,7 @@ namespace Thry.General
                 action.specialActionType = (int)behaviourType;
             }
 
-            if (!hasAdapter && behaviourType == SpecialBehaviourType.Normal)
+            if (behaviourType == SpecialBehaviourType.Normal)
             {
                 if (actionType == ActionType.Bool) action.local_bool = EditorGUILayout.Toggle("Boolean", action.local_bool);
                 else if (actionType == ActionType.Float) action.local_float = EditorGUILayout.FloatField("Float", action.local_float);
@@ -797,7 +744,6 @@ namespace Thry.General
             }
 
             GUISyncing();
-            GUIHive();
 
             //__________Other UI____________
             if (behaviourType == SpecialBehaviourType.MirrorManager)
@@ -838,27 +784,6 @@ namespace Thry.General
             {
                 action.is_synced = false;
             }
-        }
-
-        bool headerHive;
-        private void GUIHive()
-        {
-            headerHive = EditorGUILayout.BeginFoldoutHeaderGroup(headerHive, "Hive Control", headerStyle);
-            if (headerHive)
-            {
-                EditorGUILayout.LabelField("Hive", EditorStyles.boldLabel);
-                EditorGUI.BeginChangeCheck();
-
-                hiveType = (HiveType)EditorGUILayout.EnumPopup("Hive Type", (HiveType)action.hiveType);
-                if (hiveType == HiveType.Remote) action._master = (ThryAction)EditorGUILayout.ObjectField("Master Action", action._master, typeof(ThryAction), true);
-
-                if (EditorGUI.EndChangeCheck())
-                {
-                    Undo.RecordObject(action, "Modify Hive");
-                    action.hiveType = (int)hiveType;
-                }
-            }
-            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
         private void ClapperGUI()
@@ -1062,6 +987,7 @@ namespace Thry.General
                 ArrayGUI(nameof(action.toggleColliders), "Toggle Colliders");
                 ArrayGUI(nameof(action.togglePickups), "Toggle Pickups");
                 action.teleportTarget = (Transform)EditorGUILayout.ObjectField(new GUIContent("Teleport to"), action.teleportTarget, typeof(Transform), true);
+                action.teleport_specialDoorCalculation = EditorGUILayout.Toggle(new GUIContent("Teleport Door specific Calc", "Output angle relative to out transfor is the same as input angle relative to this transform"), action.teleport_specialDoorCalculation);
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Udon Calls", EditorStyles.boldLabel);
                 if (actionType == ActionType.Bool || actionType == ActionType.Float)

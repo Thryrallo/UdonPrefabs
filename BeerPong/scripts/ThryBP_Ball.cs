@@ -125,7 +125,7 @@ namespace Thry.BeerPong
 
         private void PlayAudio(AudioClip clip, float strength)
         {
-            if(clip != null) _audioSource.PlayOneShot(clip, strength);
+            if(clip != null) _audioSource.PlayOneShot(clip, Mathf.Clamp01(strength));
         }
 
         public override void OnDeserialization()
@@ -380,6 +380,14 @@ namespace Thry.BeerPong
             stateStartTime = Time.time;
         }
 
+        public void SetPositionRotation(Vector3 position, Quaternion rotation)
+        {
+            transform.position = position;
+            transform.rotation = rotation;
+            start_position = position;
+            start_rotation = rotation;
+        }
+
         //Set ownership
         public override void OnPickup()
         {
@@ -396,6 +404,7 @@ namespace Thry.BeerPong
 
         public void OnPickupDelayed()
         {
+            SetState(STATE_IN_HAND);
             EnableAndMoveIndicator();
         }
 
@@ -432,7 +441,6 @@ namespace Thry.BeerPong
             throwIndicator.SetParent(transform);
             throwIndicator.localPosition = Vector3.zero;
             throwIndicator.localRotation = Quaternion.identity;
-            SetState(STATE_IN_HAND);
             RequestSerialization();
 
             SerializePositionRelativeToHand();
@@ -463,6 +471,7 @@ namespace Thry.BeerPong
             bool isLocked = throwIndicator.parent != transform;
             if (isLocked)
             {
+                SetState(STATE_IN_HAND);
                 EnableAndMoveIndicator();
                 throwIndicator.gameObject.SetActive(false);
             }
@@ -486,10 +495,10 @@ namespace Thry.BeerPong
                 if (_lastAngularVelocities[i] > angularAddition) angularAddition = _lastAngularVelocities[i];
             }
             dropVelocity = dropVelocity / count;
-            Debug.Log("Magnitude: " + dropVelocity.magnitude);
-            Debug.Log("Angular addition: " + angularAddition);
+            //Debug.Log("Magnitude: " + dropVelocity.magnitude);
+            //Debug.Log("Angular addition: " + angularAddition);
             angularAddition = Mathf.Min(1.5f, angularAddition / 2000);
-            Debug.Log("Angular addition: " + angularAddition);
+            //Debug.Log("Angular addition: " + angularAddition);
             //Add Angular velocity for hand flip throws
             dropVelocity = (dropVelocity.magnitude + angularAddition) * dropVelocity.normalized;
             SendCustomEventDelayedFrames(nameof(OnDropDelayed), 1);
@@ -544,13 +553,8 @@ namespace Thry.BeerPong
             _special = 0;
             if (_mainScript.aimAssist > 0 || doFull)
             {
-                Vector3 aimbot = AimbotVector(start_velocity, transform.position, tableHeight);
-                if(aimbot != Vector3.zero)
-                {
-                    if (!doFull) aimbot = Vector3.Lerp(start_velocity, aimbot, _mainScript.aimAssist);
-                    start_velocity = aimbot;
-                    startVelocityLocal = start_velocity;
-                }
+                start_velocity = DoAimbotVectoring(start_velocity, transform.position, doFull?100:_mainScript.aimAssist);
+                startVelocityLocal = start_velocity;
             }
 
             SetState(STATE_FYING);
@@ -571,14 +575,8 @@ namespace Thry.BeerPong
             SetStaticCollisions();
             throwIndicator.gameObject.SetActive(false);
 
-            Vector3 aimbot = AimbotVector(start_velocity, transform.position, tableHeight);
-            if (aimbot != Vector3.zero)
-            {
-                float lerping = Random.Range(0f, 1f);
-                if (lerping < skill) lerping = 1;
-                start_velocity = Vector3.Lerp(start_velocity, aimbot, lerping);
-                startVelocityLocal = start_velocity;
-            }
+            start_velocity = DoAIVectoring(start_velocity, transform.position, skill);
+            startVelocityLocal = start_velocity;
 
             SetState(STATE_FYING);
             RequestSerialization();
@@ -625,15 +623,101 @@ namespace Thry.BeerPong
             return startVelocity;
         }
 
-        private Vector3 AimbotVector(Vector3 velocity, Vector3 position, float tableHeight)
+        private Vector3 DoAimbotVectoring(Vector3 velocity, Vector3 position, float strength)
         {
+            if (strength == 0) return velocity;
             //Get Point where ball will hit table
-            Vector3 prediction = PredictTableHit(velocity, position, tableHeight);
-            //Debug.Log("Prediction hit on table: " + prediction);
+            Vector3 predictionTableHit = PredictTableHit(velocity, position, tableHeight);
+            ThryBP_Glass cup = GetClosestGlassToPredictedTableCollision(predictionTableHit);
+            if (cup == null) return velocity;
+            Vector3 cupOpening = cup.transform.position + Vector3.up * cup.GetBounds().size.y;
+            Vector3 hitOnCupPlane = PredictTableHit(velocity, position, cupOpening.y);
+            if (Vector3.Distance(cupOpening, hitOnCupPlane) > strength) return velocity;
+            return OptimalVectorChangeStrength(velocity, position, cup);
+        }
+
+        private Vector3 DoAIVectoring(Vector3 velocity, Vector3 position, float skill)
+        {
+            if (skill == 0) return velocity;
+            //Get Point where ball will hit table
+            Vector3 predictionTableHit = PredictTableHit(velocity, position, tableHeight);
+            ThryBP_Glass cup = GetClosestGlassToPredictedTableCollision(predictionTableHit);
+            if (cup == null) return velocity;
+            Vector3 cupOpening = cup.transform.position + Vector3.up * cup.GetBounds().size.y;
+            Vector3 optimalVector = OptimalVectorChangeStrength(velocity, position, cup);
+
+            float lerping = Random.Range(0f, 1f);
+            if (lerping < skill) lerping = 1;
+            velocity = Vector3.Lerp(velocity, optimalVector, lerping);
+
+            return velocity;
+        }
+
+        private Vector3 OptimalVectorChangeStrength(Vector3 velocity, Vector3 position, ThryBP_Glass cup)
+        {
+            Vector3 cupOpening = cup.transform.position + Vector3.up * cup.GetBounds().size.y;
+            Vector3 horizonzalVector = cupOpening - position;
+            horizonzalVector.y = 0;
+            Vector3 horizonzalVelocity = velocity;
+            horizonzalVelocity.y = 0;
+            //https://www.youtube.com/watch?v=mOYJKv22qeQ&list=PLX2gX-ftPVXUUlf-9Eo_6ut4kP6wKaSWh&index=7&ab_channel=MichelvanBiezen
+            // d = v0 * cos(w) * t
+            // => t = d / (v0 * cos(w))
+            // y = y0 + v0 * sin(w) * t - 0.5 * g * t2
+            // y = y0 + v0 * sin(w) * ( d / (v0 * cos(w)) ) - 0.5 * g * ( d / (v0 * cos(w)) )2
+            // y = y0 + tan(w) * d - 0.5 * g * ( d / (v0 * cos(w)) )2
+            // y0 - y + tan(w) * d = 0.5 * g * ( d / (v0 * cos(w)) )2
+            // 2(y0 - y + tan(w) * d) / g = ( d / (v0 * cos(w)) )2
+            // sqrt( 2(y0 - y + tan(w) * d) / g) = d / (v0 * cos(w))
+            // v0 * cos(w) = d / sqrt( 2(y0 - y + tan(w) * d) / g)
+            // v0 = d / sqrt( 2(y0 - y + tan(w) * d) / g) / cos(w)
+            float d = horizonzalVector.magnitude;
+            float y0 = position.y;
+            float y = cupOpening.y;
+            float w = Mathf.Deg2Rad * Vector3.Angle(horizonzalVelocity, velocity);
+            float g = -Physics.gravity.y;
+
+            float v0 = d / Mathf.Sqrt(2 * (y0 - y + Mathf.Tan(w) * d) / g) / Mathf.Cos(w);
+
+            Vector3 newDirection = horizonzalVector.normalized * horizonzalVelocity.magnitude;
+            newDirection.y = velocity.y;
+
+            return newDirection.normalized * v0;
+        }
+
+        private Vector3 OptimalVectorChangeAngle(Vector3 velocity, Vector3 position, float tableHeight, ThryBP_Glass aimedCup)
+        {
+            //Calculate trajectory to that cup
+            Vector3 horizonzalDistance = aimedCup.transform.position - position;
+            horizonzalDistance.y = 0;
+            //https://www.youtube.com/watch?v=bqYtNrhdDAY&ab_channel=MichelvanBiezen
+            //https://www.youtube.com/watch?v=pQ23Eb-bXvQ&ab_channel=MichelvanBiezen
+            float g = -Physics.gravity.y;
+            float v2 = velocity.sqrMagnitude;
+            float x = horizonzalDistance.magnitude;
+            float h = position.y - (tableHeight + aimedCup.GetBounds().size.y);
+            float phi = Mathf.Atan(x / h);
+            float theta = (Mathf.Acos(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x)) + phi) / 2;
+
+            Vector3 newVel = (horizonzalDistance.normalized * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta)) * velocity.magnitude;
+            if (float.IsNaN(theta))
+            {
+                //cant reacht cup with current velocity
+                //just aim in it's direction instead
+                Vector3 horizontalVel = velocity;
+                horizontalVel.y = 0;
+                newVel = horizonzalDistance.normalized * horizontalVel.magnitude;
+                newVel.y = velocity.y;
+            }
+            return newVel;
+        }
+
+        private ThryBP_Glass GetClosestGlassToPredictedTableCollision(Vector3 prediction)
+        {
             //Get Cup closest to that point
             ThryBP_Glass aimedCup = null;
             float closestDistance = float.MaxValue;
-            for (int p = 0; p < _mainScript.playerCountSlider.value; p++)
+            for (int p = 0; p < _mainScript.playerCountSlider.local_float; p++)
             {
                 float d = 0;
                 foreach (ThryBP_Glass cup in _mainScript.players[p].cups.activeGlassesGameObjects)
@@ -648,41 +732,7 @@ namespace Thry.BeerPong
                     }
                 }
             }
-            if (aimedCup == null) return Vector3.zero;
-            //Calculate trajectory to that cup
-            Vector3 horizonzalDistance = aimedCup.transform.position - transform.position;
-            horizonzalDistance.y = 0;
-            //https://www.youtube.com/watch?v=bqYtNrhdDAY&ab_channel=MichelvanBiezen
-            //https://www.youtube.com/watch?v=pQ23Eb-bXvQ&ab_channel=MichelvanBiezen
-            float g = -Physics.gravity.y;
-            float v2 = velocity.sqrMagnitude;
-            float x = horizonzalDistance.magnitude;
-            float h = position.y - (tableHeight + aimedCup.GetBounds().size.y);
-            float phi = Mathf.Atan(x / h);
-            float theta = (Mathf.Acos(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x)) + phi) / 2;
-
-            /*Debug.Log("g: " + g);
-            Debug.Log("velocity2: " + v2);
-            Debug.Log("x: " + x);
-            Debug.Log("h: " + h);
-
-            Debug.Log("=> Theta: " + theta);
-
-            Debug.Log("Top: " + ((g * x * x / v2) - h));
-            Debug.Log("Bottom: " + Mathf.Sqrt(h * h + x * x));
-            Debug.Log("Phi: " + phi);*/
-
-            Vector3 newVel = (horizonzalDistance.normalized * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta)) * velocity.magnitude;
-            if (float.IsNaN(theta))
-            {
-                //cant reacht cup with current velocity
-                //just aim in it's direction instead
-                Vector3 horizontalVel = velocity;
-                horizontalVel.y = 0;
-                newVel = horizonzalDistance.normalized * horizontalVel.magnitude;
-                newVel.y = velocity.y;
-            }
-            return newVel;
+            return aimedCup;
         }
 
         private Vector3 PredictTableHit(Vector3 velocity, Vector3 position, float tableHeight)
@@ -747,7 +797,7 @@ namespace Thry.BeerPong
 
         public void Respawn()
         {
-            if(currentPlayer >= _mainScript.playerCountSlider.value)
+            if(currentPlayer >= _mainScript.playerCountSlider.local_float)
             {
                 currentPlayer = 0;
                 SetColor();

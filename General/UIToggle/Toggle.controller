@@ -9,7 +9,7 @@ AnimatorController:
   m_Name: Toggle
   serializedVersion: 5
   m_AnimatorParameters:
-  - m_Name: on
+  - m_Name: isOn
     m_Type: 4
     m_DefaultFloat: 0
     m_DefaultInt: 0
@@ -37,7 +37,7 @@ AnimatorStateTransition:
   m_Name: 
   m_Conditions:
   - m_ConditionMode: 1
-    m_ConditionEvent: on
+    m_ConditionEvent: isOn
     m_EventTreshold: 0
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: 1102217548156987748}
@@ -62,7 +62,7 @@ AnimatorStateTransition:
   m_Name: 
   m_Conditions:
   - m_ConditionMode: 2
-    m_ConditionEvent: on
+    m_ConditionEvent: isOn
     m_EventTreshold: 0
   m_DstStateMachine: {fileID: 0}
   m_DstState: {fileID: 1102035383952678074}
@@ -80,7 +80,7 @@ AnimatorStateTransition:
   m_CanTransitionToSelf: 0
 --- !u!1102 &1102035383952678074
 AnimatorState:
-  serializedVersion: 5
+  serializedVersion: 6
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -106,7 +106,7 @@ AnimatorState:
   m_TimeParameter: 
 --- !u!1102 &1102217548156987748
 AnimatorState:
-  serializedVersion: 5
+  serializedVersion: 6
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -132,7 +132,7 @@ AnimatorState:
   m_TimeParameter: 
 --- !u!1107 &1107865066535763692
 AnimatorStateMachine:
-  serializedVersion: 5
+  serializedVersion: 6
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}

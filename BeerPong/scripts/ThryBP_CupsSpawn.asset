@@ -27,7 +27,7 @@ MonoBehaviour:
     ReferencedUnityObjects:
     - {fileID: 11500000, guid: d5f1a727b073dec4ab37b45839cf54d9, type: 3}
     - {fileID: 11500000, guid: 7332e7b4f71652640bccfd692eedb705, type: 3}
-    - {fileID: 11500000, guid: 2a354731c6235d04fa0ab22b690ec488, type: 3}
+    - {fileID: 11500000, guid: 3328cb592289fcd4b9a6ce4d48b66e12, type: 3}
     SerializedBytesString: 
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
@@ -730,7 +730,7 @@ MonoBehaviour:
       Data: 50|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: Thry.BeerPong.ThryBP_OptionsSelector, Assembly-CSharp
+      Data: Thry.General.ThryAction, Assembly-CSharp
     - Name: 
       Entry: 8
       Data: 

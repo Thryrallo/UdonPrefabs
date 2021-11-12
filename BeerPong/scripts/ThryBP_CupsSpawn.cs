@@ -1,5 +1,6 @@
 ﻿
 using System;
+using Thry.General;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -41,7 +42,7 @@ namespace Thry.BeerPong
         public int existing_glasses_count = 0;
 
         //shape
-        public ThryBP_OptionsSelector shapeSelector;
+        public ThryAction shapeSelector;
 
         const int SHAPE_TRIANGLE = 0;
         const int SHAPE_SQUARE = 1;
@@ -155,7 +156,7 @@ namespace Thry.BeerPong
             }
 
             //Replace glasses
-            int shape = shapeSelector.selectedIndex;
+            int shape = (int)shapeSelector.local_float;
             int remove = 0;
             int rows = 0;
             switch (shape)
@@ -215,7 +216,7 @@ namespace Thry.BeerPong
         public void ResetGlassesOwner()
         {
             int placeRows = (int)rowsSlider.value;
-            int shape = shapeSelector.selectedIndex;
+            int shape = (int)shapeSelector.local_float;
 
             if (overwriteRows > -1) placeRows = overwriteRows;
             if (overwriteShape > -1) shape = overwriteShape;

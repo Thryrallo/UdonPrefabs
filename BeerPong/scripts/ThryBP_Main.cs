@@ -1,4 +1,5 @@
 ﻿
+using Thry.General;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -32,10 +33,10 @@ namespace Thry.BeerPong{
         public bool canHitOwnCups = false;
         public bool friendlyFire = true;
 
-        public UnityEngine.UI.Slider playerCountSlider;
-        public ThryBP_Toggle toggleTeams;
-        public ThryBP_Toggle toggleBarrier;
-        public ThryBP_OptionsSelector gamemodeSelection;
+        public ThryAction playerCountSlider;
+        public ThryAction toggleTeams;
+        public ThryAction toggleBarrier;
+        public ThryAction gamemodeSelection;
 
         public Transform kingOfTheHillParent;
 
@@ -118,7 +119,7 @@ namespace Thry.BeerPong{
             if (cupOwner < players.Length)
             {
                 //for teams
-                if (toggleTeams.value)
+                if (toggleTeams.local_bool)
                 {
                     int add = AddToScore(scoreingPlayer, cupOwner, scoreType);
                     if (add != 0)
@@ -147,7 +148,7 @@ namespace Thry.BeerPong{
             if (gamemode == GM_KING_HILL) return true;
             if (gamemode == GM_BIG_PONG) return true;
             if (ballOwner == cupOwner.playerIndex) return canHitOwnCups;
-            if (toggleTeams.value && ballOwner % teamSize == cupOwner.playerIndex % teamSize) return friendlyFire;
+            if (toggleTeams.local_bool && ballOwner % teamSize == cupOwner.playerIndex % teamSize) return friendlyFire;
             return true;
         }
 
@@ -158,7 +159,7 @@ namespace Thry.BeerPong{
             if (gamemode == GM_KING_HILL) return 2 - scoreType;
             if (gamemode == GM_BIG_PONG) return 2 - scoreType;
             if (ballOwner == cupOwner) return 0;
-            if (toggleTeams.value && ballOwner % teamSize == cupOwner % teamSize) return -3;
+            if (toggleTeams.local_bool && ballOwner % teamSize == cupOwner % teamSize) return -3;
             return 1 + scoreType;
         }
 
@@ -182,7 +183,7 @@ namespace Thry.BeerPong{
         public int PlayersWithCupsLeft()
         {
             int t = 0;
-            for (int i = 0; i < players.Length && i < (int)playerCountSlider.value; i++)
+            for (int i = 0; i < players.Length && i < (int)playerCountSlider.local_float; i++)
             {
                 if (players[i].cups.existing_glasses_count > 0) t++;
             }
@@ -191,12 +192,12 @@ namespace Thry.BeerPong{
 
         public int GetNextPlayer(int c)
         {
-            c = (c + 1) % (int)playerCountSlider.value;
+            c = (c + 1) % (int)playerCountSlider.local_float;
             if (PlayersWithCupsLeft() > 1)
             {
                 while (players[c].cups.existing_glasses_count == 0)
                 {
-                    c = (c + 1) % (int)playerCountSlider.value;
+                    c = (c + 1) % (int)playerCountSlider.local_float;
                 }
             }
             return c;
@@ -204,7 +205,7 @@ namespace Thry.BeerPong{
 
         public void ChangeTeams()
         {
-            if (toggleTeams.value)
+            if (toggleTeams.local_bool)
             {
                 teamSize = 2;
                 for (int i = teamSize; i < players.Length; i++)
@@ -225,7 +226,7 @@ namespace Thry.BeerPong{
 
         public void ChangeBarrier()
         {
-            SetDividersActive(toggleBarrier.value && gamemode == GM_NORMAL);
+            SetDividersActive(toggleBarrier.local_bool && gamemode == GM_NORMAL);
         }
 
         void SetDividersActive(bool active)
@@ -235,10 +236,10 @@ namespace Thry.BeerPong{
 
         public void ChangeGameMode()
         {
-            gamemode = gamemodeSelection.selectedIndex;
+            gamemode = (int)gamemodeSelection.local_float;
             if(gamemode == GM_NORMAL)
             {
-                SetDividersActive(toggleBarrier.value);
+                SetDividersActive(toggleBarrier.local_bool);
 
                 for (int i = 0; i < players.Length; i++)
                 {
@@ -249,7 +250,7 @@ namespace Thry.BeerPong{
                     //players[i].cups.transform.localRotation = Quaternion.identity;
                     players[i].cups.overwriteShape = -1;
 
-                    players[i].cups.overwriteRows = i < playerCountSlider.value ? -1 : 0;
+                    players[i].cups.overwriteRows = i < playerCountSlider.local_float ? -1 : 0;
                     players[i].cups.ResetGlassesIfOwner(1, 0, Vector3.zero);
                 }
             }else if(gamemode == GM_KING_HILL)
@@ -291,33 +292,33 @@ namespace Thry.BeerPong{
 
         public void ChangeAmountOfPlayers()
         {
-            if (playerCountSlider.value <= tables.Length && playerCountSlider.value <= players.Length)
+            if (playerCountSlider.local_float <= tables.Length && playerCountSlider.local_float <= players.Length)
             {
                 //activate correct table
                 for (int i = 0; i < tables.Length; i++)
                 {
-                    if (tables[i] != null) tables[i].SetActive(i == playerCountSlider.value);
+                    if (tables[i] != null) tables[i].SetActive(i == playerCountSlider.local_float);
                 }
                 //activate teams
                 for (int i = 0; i < players.Length; i++)
                 {
-                    players[i].gameObject.SetActive(i < playerCountSlider.value);
+                    players[i].gameObject.SetActive(i < playerCountSlider.local_float);
                     //set positions
-                    if (i < playerCountSlider.value)
+                    if (i < playerCountSlider.local_float)
                     {
-                        if (playerCountSlider.value == 2)
+                        if (playerCountSlider.local_float == 2)
                         {
                             players[i].transform.SetPositionAndRotation(twoTeamPositions[i].position, twoTeamPositions[i].rotation);
-                        } else if (playerCountSlider.value == 3)
+                        } else if (playerCountSlider.local_float == 3)
                         {
                             players[i].transform.SetPositionAndRotation(threeTeamPositions[i].position, threeTeamPositions[i].rotation);
-                        } else if (playerCountSlider.value == 4)
+                        } else if (playerCountSlider.local_float == 4)
                         {
                             players[i].transform.SetPositionAndRotation(fourTeamPositions[i].position, fourTeamPositions[i].rotation);
                         }
                     }
                     //Setup cups
-                    if(gamemode == GM_NORMAL && i < playerCountSlider.value && players[i].cups.existing_glasses_count == 0)
+                    if(gamemode == GM_NORMAL && i < playerCountSlider.local_float && players[i].cups.existing_glasses_count == 0)
                     {
                         players[i].cups.overwriteRows = -1;
                         players[i].cups.ResetGlassesIfOwner(1, 0, Vector3.zero);
