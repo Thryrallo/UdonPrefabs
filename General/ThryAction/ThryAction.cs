@@ -94,13 +94,13 @@ namespace Thry.General
         private bool isAutherizedPlayer;
 
         //Mirror Manager
-        public Transform[] mirrors;
         public float maximumOpenDistance = 5;
 
         //Adapter
         Component[] _adapters = new Component[0];
 
-        private Transform selectedMirror;
+        private VRC_MirrorReflection activeMirrorRefelction;
+        private Renderer activeMirrorRenderer;
 
         bool hasStartNotRun = true;
         bool doBlockOnInteract = false;
@@ -236,58 +236,50 @@ namespace Thry.General
                 if (IsNormalRequirementMet()) UpdateAndExecuteOnInteraction();
                 else UpdateAllAdapterValues();
             }
-            if (specialActionType == 1 && IsMirrorRequirementMet()) _ExecuteMirror();
+            if (specialActionType == 1) DoMirrorManager();
         }
 
         //=========Mirror manager=========
 
-        private bool IsMirrorRequirementMet()
+        private void DoMirrorManager()
         {
-            float closestTransform = float.MaxValue;
-            Transform selected = null;
             VRCPlayerApi.TrackingData trackingData = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
 
             Vector3 lookDirection = (trackingData.rotation * Vector3.forward).normalized;
             Ray lookRay = new Ray(trackingData.position, lookDirection);
-            foreach (Transform t in mirrors)
+
+            RaycastHit hit;
+            if(Physics.Raycast(lookRay, out hit, maximumOpenDistance, 16, QueryTriggerInteraction.Collide))
             {
-                Plane mirrorPlane = new Plane(t.rotation * Vector3.back, t.position);
-                float intersectionDistance;
-                if (mirrorPlane.Raycast(lookRay, out intersectionDistance) == false)
-                    continue;
-
-                Vector3 intersection = trackingData.position + lookDirection * intersectionDistance;
-
-                Vector3 toIntersectionVector = intersection - t.position;
-                toIntersectionVector = Quaternion.Inverse(t.rotation) * toIntersectionVector;
-
-                if (Mathf.Abs(toIntersectionVector.x) > t.lossyScale.x / 2 || Mathf.Abs(toIntersectionVector.y) > t.lossyScale.y / 2)
-                    continue;
-
-                if (intersectionDistance < closestTransform)
+                GameObject obj = hit.collider.gameObject;
+                VRC_MirrorReflection mirror = (VRC_MirrorReflection)obj.GetComponent(typeof(VRC_MirrorReflection));
+                Renderer renderer = obj.GetComponent<Renderer>();
+                if (mirror && renderer)
                 {
-                    closestTransform = intersectionDistance;
-                    selected = t;
+                    if (activeMirrorRefelction != mirror)
+                    {
+                        SetActiveMirror(false);
+                        activeMirrorRefelction = mirror;
+                        activeMirrorRenderer = renderer;
+                        SetActiveMirror(true);
+                    }
+                    else
+                    {
+                        SetActiveMirror(!activeMirrorRefelction.enabled);
+                    }
+                    return;
                 }
             }
-
-            if (selected != null && closestTransform < maximumOpenDistance)
-            {
-                //Open new mirror
-                //Turn old mirror off
-                if (selectedMirror != selected)
-                {
-                    if (selectedMirror != null) selectedMirror.gameObject.SetActive(false);
-                    selectedMirror = selected;
-                }
-                return true;
-            }
-            return selectedMirror != null && selectedMirror.gameObject.activeSelf;
+            SetActiveMirror(false);
         }
 
-        private void _ExecuteMirror()
+        private void SetActiveMirror(bool on)
         {
-            selectedMirror.gameObject.SetActive(!selectedMirror.gameObject.activeSelf);
+            if(activeMirrorRefelction != null)
+            {
+                activeMirrorRefelction.enabled = on;
+                activeMirrorRenderer.enabled = on;
+            }
         }
 
         //=======Requirements========
@@ -1046,7 +1038,6 @@ namespace Thry.General
             if (headerMirror)
             {
                 EditorGUI.indentLevel += 1;
-                ArrayGUI(nameof(action.mirrors), "Mirrors", "Nees to be the actual mirror plane.");
                 action.maximumOpenDistance = EditorGUILayout.FloatField(new GUIContent("Maximum Distance", "Maximum distance the player can stand from the mirror and open it."), action.maximumOpenDistance);
                 EditorGUI.indentLevel -= 1;
             }
