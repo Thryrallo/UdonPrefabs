@@ -38,6 +38,9 @@ namespace Thry.Udon.Action
 
         public override void OnPlayerTriggerEnter(VRCPlayerApi player)
         {
+            if (player.GetPlayerTag("in room") == "true") return; //done because using chairs you can trigger this multiple times without triggering the exit event
+            player.SetPlayerTag("in room", "true");
+
             players[count++] = player;
             if (!_isValidating)
             {
@@ -49,6 +52,8 @@ namespace Thry.Udon.Action
 
         public override void OnPlayerTriggerExit(VRCPlayerApi player)
         {
+            player.SetPlayerTag("in room", "false");
+
             for (int i = 0; i < count; i++)
             {
                 if (players[i] == player)
@@ -56,7 +61,6 @@ namespace Thry.Udon.Action
                     players[i] = players[--count];
                     if (Networking.IsOwner(_locker.gameObject) && count == 0) _locker.SetBool(false);
                     UpdateList();
-                    return;
                 }
             }
         }

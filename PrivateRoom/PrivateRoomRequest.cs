@@ -38,6 +38,11 @@ namespace Thry.Udon.PrivateRoom
             roomRquestObject.SetActive(false);
         }
 
+        public void ForceHide()
+        {
+            roomRquestObject.SetActive(false);
+        }
+
         public void OnInteraction()
         {
             Networking.SetOwner(Networking.LocalPlayer, gameObject);
