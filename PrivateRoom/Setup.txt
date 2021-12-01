@@ -1,0 +1,7 @@
+How to setup new rooms.
+
+1. Drag prefab into scene
+2. Create new render texture / duplicate render texture
+3. Swap camera and image to new render texture 
+ 3.1 Inside/UI/Request/[Setup] Photo
+ 3.2 Outside/[Setup] Camera
