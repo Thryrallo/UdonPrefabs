@@ -65,6 +65,9 @@ namespace Thry.General
         public string[] udonEventNames;
         public string[] udonValueNames;
 
+        public Text gameobjectOwnerText;
+        public Camera takeCameraPicture;
+
         //Udonbehevaiour sorting
         GameObject[] udon_bool_Behvaiours;
         string[] udon_bool_Names;
@@ -411,6 +414,11 @@ namespace Thry.General
                     Networking.LocalPlayer.SetVelocity((teleportTarget.rotation * Quaternion.Inverse(Networking.LocalPlayer.GetRotation())) * Networking.LocalPlayer.GetVelocity());
                 }
             }
+
+            if (takeCameraPicture)
+            {
+                takeCameraPicture.Render();
+            }
         }
 
         private void ExecuteUdonEvents()
@@ -519,6 +527,14 @@ namespace Thry.General
             for (int i = 0; i < udon_int_Behvaiours.Length; i++)
             {
                 ((UdonBehaviour)udon_int_Behvaiours[i].GetComponent(typeof(UdonBehaviour))).SetProgramVariable(udon_int_Names[i], (int)_local_float_transformed);
+            }
+        }
+
+        public override void OnOwnershipTransferred(VRCPlayerApi player)
+        {
+            if (gameobjectOwnerText)
+            {
+                gameobjectOwnerText.text = player.displayName;
             }
         }
     }
@@ -931,24 +947,27 @@ namespace Thry.General
             }
             Rect headerR = EditorGUILayout.GetControlRect(true);
             headerR.width = headerR.width / arrays.Length;
-            for (int a = 0; a < arrays.Length; a++)
+            if (length > 0)
             {
-                EditorGUI.LabelField(headerR, new GUIContent(arrays[a].title, arrays[a].tooltip), EditorStyles.boldLabel);
-                headerR.x += headerR.width;
-            }
-            for (int i = 0; i < length; i++)
-            {
-                EditorGUILayout.BeginHorizontal();
                 for (int a = 0; a < arrays.Length; a++)
                 {
-                    if (arrays[a].type == 0) arrays[a].unityA[i] = EditorGUILayout.ObjectField(arrays[a].unityA[i], arrays[a].unityA.GetType().GetElementType(), true);
-                    else if (arrays[a].type == 1 && arrays[a].enumType != null) arrays[a].intA[i] = Convert.ToInt32(EditorGUILayout.EnumPopup(arrays[a].GetEnumValue(i)));
-                    else if (arrays[a].type == 1) arrays[a].intA[i] = EditorGUILayout.IntField(arrays[a].intA[i]);
-                    else if (arrays[a].type == 2) arrays[a].floatA[i] = EditorGUILayout.FloatField(arrays[a].floatA[i]);
-                    else if (arrays[a].type == 3) arrays[a].stringA[i] = EditorGUILayout.TextField(arrays[a].stringA[i]);
-                    else EditorGUILayout.LabelField("Missing Type");
+                    EditorGUI.LabelField(headerR, new GUIContent(arrays[a].title, arrays[a].tooltip), EditorStyles.boldLabel);
+                    headerR.x += headerR.width;
                 }
-                EditorGUILayout.EndHorizontal();
+                for (int i = 0; i < length; i++)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    for (int a = 0; a < arrays.Length; a++)
+                    {
+                        if (arrays[a].type == 0) arrays[a].unityA[i] = EditorGUILayout.ObjectField(arrays[a].unityA[i], arrays[a].unityA.GetType().GetElementType(), true);
+                        else if (arrays[a].type == 1 && arrays[a].enumType != null) arrays[a].intA[i] = Convert.ToInt32(EditorGUILayout.EnumPopup(arrays[a].GetEnumValue(i)));
+                        else if (arrays[a].type == 1) arrays[a].intA[i] = EditorGUILayout.IntField(arrays[a].intA[i]);
+                        else if (arrays[a].type == 2) arrays[a].floatA[i] = EditorGUILayout.FloatField(arrays[a].floatA[i]);
+                        else if (arrays[a].type == 3) arrays[a].stringA[i] = EditorGUILayout.TextField(arrays[a].stringA[i]);
+                        else EditorGUILayout.LabelField("Missing Type");
+                    }
+                    EditorGUILayout.EndHorizontal();
+                }
             }
             return arrays;
         }
@@ -974,10 +993,13 @@ namespace Thry.General
                     }
                 }
 
+                EditorGUILayout.LabelField("Toggles", EditorStyles.boldLabel);
                 ArrayGUI(nameof(action.toggleObjects), "Toggle GameObjects");
                 if (actionType == ActionType.Bool) ArrayGUI(nameof(action.toggleObjectsInverted), "Toggle GameObjects Inverted");
                 ArrayGUI(nameof(action.toggleColliders), "Toggle Colliders");
                 ArrayGUI(nameof(action.togglePickups), "Toggle Pickups");
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Teleports", EditorStyles.boldLabel);
                 action.teleportTarget = (Transform)EditorGUILayout.ObjectField(new GUIContent("Teleport to"), action.teleportTarget, typeof(Transform), true);
                 action.teleport_specialDoorCalculation = EditorGUILayout.Toggle(new GUIContent("Teleport Door specific Calc", "Output angle relative to out transfor is the same as input angle relative to this transform"), action.teleport_specialDoorCalculation);
                 EditorGUILayout.Space();
@@ -1009,6 +1031,10 @@ namespace Thry.General
                 action.animators = (Animator[])arraysAnimator[0].unityA;
                 action.animatorParameterTypes = arraysAnimator[1].intA;
                 action.animatorParameterNames = arraysAnimator[2].stringA;
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Others", EditorStyles.boldLabel);
+                action.gameobjectOwnerText = (Text)EditorGUILayout.ObjectField("Text with Owner Displayname",action.gameobjectOwnerText, typeof(Text), true);
+                action.takeCameraPicture = (Camera)EditorGUILayout.ObjectField("Take Picture",action.takeCameraPicture, typeof(Camera), true);
                 EditorGUILayout.Space();
                 EditorGUI.indentLevel -= 1;
             }

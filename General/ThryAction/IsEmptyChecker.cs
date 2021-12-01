@@ -10,13 +10,13 @@ namespace Thry.Udon.Action
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class IsEmptyChecker : UdonSharpBehaviour
     {
+        public ThryAction _locker;
         public UnityEngine.UI.Text _insideList; 
 
         Collider _collider;
         VRCPlayerApi[] players;
         int count = 0;
 
-        public ThryAction _locker;
         bool _isValidating = true;
 
         private void Start()
@@ -75,6 +75,7 @@ namespace Thry.Udon.Action
 
         void UpdateList()
         {
+            if (_insideList == null) return;
             string s = "";
             for (int i = 0; i < count; i++)
                 if (Utilities.IsValid(players[i]))
