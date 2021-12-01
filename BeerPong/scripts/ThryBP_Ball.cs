@@ -462,6 +462,19 @@ namespace Thry.BeerPong
 
         public override void OnPickupUseDown()
         {
+            _special++;
+        }
+
+        public override void OnPickupUseUp()
+        {
+            if ((int)InputManager.GetLastUsedInputMethod() == 10) //if index, release
+            {
+                _pickup.Drop();
+            }
+        }
+
+        /*public override void OnPickupUseDown()
+        {
             throwIndicator.gameObject.SetActive(true);
         }
 
@@ -479,7 +492,7 @@ namespace Thry.BeerPong
             {
                 LockIndicator();
             }
-        }
+        }*/
 
         Vector3 dropVelocity;
         public override void OnDrop()
@@ -488,19 +501,20 @@ namespace Thry.BeerPong
             dropVelocity = Vector3.zero;
             int count = 0;
             float angularAddition = 0;
-            for(int i = 0; i < VELOCITY_BUFFER_LENGTH; i++)
+            for (int i = 0; i < VELOCITY_BUFFER_LENGTH; i++)
             {
                 dropVelocity += _lastvelocies[i];
                 if (_lastvelocies[i] != Vector3.zero) count++;
                 if (_lastAngularVelocities[i] > angularAddition) angularAddition = _lastAngularVelocities[i];
             }
             dropVelocity = dropVelocity / count;
-            //Debug.Log("Magnitude: " + dropVelocity.magnitude);
-            //Debug.Log("Angular addition: " + angularAddition);
+
             angularAddition = Mathf.Min(1.5f, angularAddition / 2000);
-            //Debug.Log("Angular addition: " + angularAddition);
-            //Add Angular velocity for hand flip throws
             dropVelocity = (dropVelocity.magnitude + angularAddition) * dropVelocity.normalized;
+
+            
+            Debug.Log("Angular: " + angularAddition);
+            Debug.Log("Calced: " + dropVelocity.magnitude);
             SendCustomEventDelayedFrames(nameof(OnDropDelayed), 1);
         }
 
@@ -509,6 +523,7 @@ namespace Thry.BeerPong
         {
             if (Networking.LocalPlayer.IsUserInVR())
             {
+                Debug.Log("[Thry][BP] Final: " + dropVelocity);
                 //Transfer the velocity to the selected vector
                 if (state[0] == STATE_LOCKED)
                 {

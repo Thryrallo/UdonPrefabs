@@ -17,7 +17,7 @@ MonoBehaviour:
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: 0d191ffc798813542947c17c890ee953, type: 3}
-  behaviourSyncMode: 0
+  behaviourSyncMode: 1
   behaviourIDHeapVarName: __refl_const_intnl_udonTypeID
   compileErrors: []
   hasInteractEvent: 0

@@ -8,6 +8,7 @@ using VRC.Udon;
 
 namespace Thry.General
 {
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class HandCollider : UdonSharpBehaviour
     {
         public bool isRightHand;

@@ -17,6 +17,9 @@ namespace Thry.SAO
         public float scrollSpeed = 4;
         public float scrollThresholdSquare = 0.001f;
 
+        [Header("Resources")]
+        public AudioClip onClickSound;
+
         private Collider[] currentColliders = new Collider[10];
         private float[] currentCollidersEnterTime = new float[10];
         private Vector3[] currentCollidersEnterPosition = new Vector3[10];
@@ -36,6 +39,7 @@ namespace Thry.SAO
 
         bool _isNotVR = false;
         VRCPlayerApi _player;
+        AudioSource _audioSource;
 
         private void Start()
         {
@@ -47,6 +51,7 @@ namespace Thry.SAO
                 return;
             }
             _avatarHeightTracker = o.GetComponent<AvatarHeightTracker>();
+            _audioSource = this.GetComponent<AudioSource>();
 
             _player = Networking.LocalPlayer;
             if (_player == null) return;
@@ -141,6 +146,7 @@ namespace Thry.SAO
                     {
                         if (clickedButton != null) clickedButton.colors = clickedButtonPrevColorBlock;
                         SetClickedButtonColor(button);
+                        if (_audioSource && onClickSound) _audioSource.PlayOneShot(onClickSound);
                     }
                 }
             }
