@@ -18,6 +18,15 @@ Advanced Beer Pong with tons of features. Different gamemodes, advanced syncing,
 Bottle Spin that spins smoothly on local and remote clients.
 Has the ability of having random players selected as targets instead of just a random angle.
 
+* ### PrivateRoom
+Private rooms that can be locked and unlock then no player is in the room anymore. Has a list with players in room and a doorbell to request unlocking.
+
+* ### AfkMessages
+Leave a message for your friends that are afking in a room sleeping etc. A text field that lets players input a message that shows for the room master in a scrolllist.
+
+* Clapper
+Reacts to claps. Makes sound + clap emoji when players clap.
+
 * ### SAO Menu
 This is an old prefabs. I got a more up to date version locally, but i would like to rework a lot for an update when i get time.
 
