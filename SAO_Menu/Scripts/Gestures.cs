@@ -93,6 +93,7 @@ namespace Thry.SAO
 
         public float REQUIRED_OPENING_DISTANCE = 0.2f;
         public float REQUIRED_CLOSING_DISTANCE = 0.2f;
+        public KeyCode menuKeyCode = KeyCode.E;
 
         private Vector3 rightIndexFingerPosition;
         private Vector3 prev_RightIndexFingerPosition;
@@ -151,7 +152,7 @@ namespace Thry.SAO
             }
             else
             {
-                if (UnityEngine.Input.GetKeyDown("e"))
+                if (UnityEngine.Input.GetKeyDown(menuKeyCode))
                 {
                     menu.OpenMenu(false);
                     menu.CloseMenu();
