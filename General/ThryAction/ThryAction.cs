@@ -65,6 +65,8 @@ namespace Thry.General
         public string[] udonEventNames;
         public string[] udonValueNames;
 
+        public AudioSource[] _audioVolume;
+
         public Text gameobjectOwnerText;
         public Camera takeCameraPicture;
 
@@ -171,7 +173,7 @@ namespace Thry.General
 
             //==>Requirements
             //Check Autherized name list
-            string localName = Networking.LocalPlayer.displayName;
+            string localName = Networking.LocalPlayer != null ? Networking.LocalPlayer.displayName : "";
             foreach (string n in autherizedPlayerDisplayNames) if (localName == n) isAutherizedPlayer = true;
             if (autherizedPlayerDisplayNames.Length == 0) isAutherizedPlayer = true;
 
@@ -340,6 +342,16 @@ namespace Thry.General
             UpdateAndExecuteOnInteraction_Execute();
         }
 
+        public bool GetBool()
+        {
+            return local_bool;
+        }
+
+        public float GetFloat()
+        {
+            return local_float;
+        }
+
         //Syncing
         public override void OnDeserialization()
         {
@@ -466,6 +478,7 @@ namespace Thry.General
 
                 UpdateFloatAnimators();
                 UpdateBoolToggles();
+                UpdateFloatAudioSources();
 
                 UpdateUdonValuesFloat();
                 UpdateUdonValuesBool();
@@ -492,6 +505,14 @@ namespace Thry.General
                     if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Float) animators[i].SetFloat(animatorParameterNames[i], _local_float_transformed);
                     else if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Int) animators[i].SetInteger(animatorParameterNames[i], (int)_local_float_transformed);
                 }
+            }
+        }
+
+        private void UpdateFloatAudioSources()
+        {
+            for(int i = 0; i < _audioVolume.Length; i++)
+            {
+                _audioVolume[i].volume = _local_float_transformed;
             }
         }
 
@@ -935,20 +956,21 @@ namespace Thry.General
 
         private ArrayData[] ArraysGUI(params ArrayData[] arrays)
         {
-            EditorGUI.BeginChangeCheck();
-            int length = EditorGUILayout.IntField(arrays[0].Length());
-
-            if (EditorGUI.EndChangeCheck() || arrays.Any(a => a.Length() < length))
+            //EditorGUI.BeginChangeCheck();
+            //int length = EditorGUILayout.IntField(arrays[0].Length());
+            //if (EditorGUI.EndChangeCheck() || arrays.Any(a => a.Length() < length))
+            int length = arrays[0].Length();
+            if (arrays.Any(a => a.Length() < length))
             {
                 for (int i = 0; i < arrays.Length; i++)
                 {
                     arrays[i].NewLength(length);
                 }
             }
-            Rect headerR = EditorGUILayout.GetControlRect(true);
-            headerR.width = headerR.width / arrays.Length;
             if (length > 0)
             {
+                Rect headerR = EditorGUILayout.GetControlRect(true);
+                headerR.width = headerR.width / arrays.Length;
                 for (int a = 0; a < arrays.Length; a++)
                 {
                     EditorGUI.LabelField(headerR, new GUIContent(arrays[a].title, arrays[a].tooltip), EditorStyles.boldLabel);
@@ -969,6 +991,20 @@ namespace Thry.General
                     EditorGUILayout.EndHorizontal();
                 }
             }
+
+            Rect rButtons = EditorGUILayout.GetControlRect(false);
+            rButtons.x += EditorGUI.indentLevel * 15;
+            rButtons.width -= EditorGUI.indentLevel * 15;
+            rButtons.width = rButtons.width / 2;
+            int newLength = length;
+            if (GUI.Button(rButtons, "Remove")) newLength = Mathf.Max(0, newLength - 1);
+            rButtons.x += rButtons.width;
+            if (GUI.Button(rButtons, "Add")) newLength = newLength + 1;
+            if(length != newLength)
+            {
+                for (int i = 0; i < arrays.Length; i++) arrays[i].NewLength(newLength);
+            }
+
             return arrays;
         }
 
@@ -1031,6 +1067,9 @@ namespace Thry.General
                 action.animators = (Animator[])arraysAnimator[0].unityA;
                 action.animatorParameterTypes = arraysAnimator[1].intA;
                 action.animatorParameterNames = arraysAnimator[2].stringA;
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Audio Volume", EditorStyles.boldLabel);
+                action._audioVolume = (AudioSource[])ArraysGUI(new ArrayData("Audio Source", "", action._audioVolume, typeof(AudioSource)))[0].unityA;
                 EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Others", EditorStyles.boldLabel);
                 action.gameobjectOwnerText = (Text)EditorGUILayout.ObjectField("Text with Owner Displayname",action.gameobjectOwnerText, typeof(Text), true);

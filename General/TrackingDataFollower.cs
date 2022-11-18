@@ -10,18 +10,23 @@ namespace Thry.General
     {
         public VRCPlayerApi.TrackingDataType headType = VRCPlayerApi.TrackingDataType.Head;
 
+        bool _isInit;
         VRCPlayerApi _player;
         VRCPlayerApi.TrackingData trackingData;
 
         private void Start()
         {
             _player = Networking.LocalPlayer;
+            _isInit = true;
         }
 
         private void Update()
         {
-            trackingData = _player.GetTrackingData(headType);
-            transform.SetPositionAndRotation(trackingData.position, trackingData.rotation);
+            if (_isInit)
+            {
+                trackingData = _player.GetTrackingData(headType);
+                transform.SetPositionAndRotation(trackingData.position, trackingData.rotation);
+            }
         }
     }
 }

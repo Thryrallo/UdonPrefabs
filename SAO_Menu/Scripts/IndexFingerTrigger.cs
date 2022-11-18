@@ -37,7 +37,7 @@ namespace Thry.SAO
 
         AvatarHeightTracker _avatarHeightTracker;
 
-        bool _isNotVR = false;
+        bool _isNotVR = true;
         VRCPlayerApi _player;
         AudioSource _audioSource;
 
@@ -47,7 +47,7 @@ namespace Thry.SAO
             GameObject o = GameObject.Find("[Thry]AvatarHeightTracker");
             if (o == null)
             {
-                Debug.LogError("Can't Find AvatarHeightTracker");
+                Debug.LogError("[Thry][FingerTrigger]Can't Find AvatarHeightTracker");
                 return;
             }
             _avatarHeightTracker = o.GetComponent<AvatarHeightTracker>();
@@ -55,11 +55,12 @@ namespace Thry.SAO
 
             _player = Networking.LocalPlayer;
             if (_player == null) return;
-            _isNotVR = !Networking.LocalPlayer.IsUserInVR();
+            _isNotVR = !_player.IsUserInVR();
         }
 
         public void OnTriggerEnter(Collider other)
         {
+            if (_isNotVR) return;
             if (other == null)
                 return;
             if (other.gameObject.layer != 17) return;
@@ -97,6 +98,7 @@ namespace Thry.SAO
 
         public void OnTriggerExit(Collider other)
         {
+            if (_isNotVR) return;
             if (other == null)
                 return;
             if (other.gameObject.layer != 17) return;

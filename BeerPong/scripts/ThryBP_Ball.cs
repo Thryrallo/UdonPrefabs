@@ -57,7 +57,7 @@ namespace Thry.BeerPong
         const byte STATE_IN_CUP = 5;
 
         [UdonSynced]
-        int currentPlayer = 0;
+        public int currentPlayer = 0;
 
         [UdonSynced]
         Vector3 start_position;
@@ -111,7 +111,7 @@ namespace Thry.BeerPong
 
             _isThry = Networking.LocalPlayer.displayName == "Thryrallo";
 
-            SetColor();
+            _SetColor();
             if (Networking.IsOwner(gameObject))
             {
                 start_position = transform.position;
@@ -131,7 +131,7 @@ namespace Thry.BeerPong
         public override void OnDeserialization()
         {
             _pickup.pickupable = state[0] == STATE_IDLE || (state[0] == STATE_IN_CUP && !autoRespawnBallAfterCupHit);
-            SetColor();
+            _SetColor();
 
             if (state[0] == STATE_IDLE)
             {
@@ -302,6 +302,10 @@ namespace Thry.BeerPong
                     transform.position = cup.transform.position + Vector3.up * (cup.GetBounds().size.y * downwards)
                         + Quaternion.Euler(0, angle, 0) * Vector3.forward * (cup.radius * cup.transform.lossyScale.x * inside - _radius);
                 }
+                else
+                {
+                    Respawn();
+                }
             }
             else
             {
@@ -318,6 +322,10 @@ namespace Thry.BeerPong
                     stateStartTime = Time.time;
                     _TriggerSplash();
                     _pickup.pickupable = !autoRespawnBallAfterCupHit;
+                }
+                else
+                {
+                    Respawn();
                 }
             }
         }
@@ -370,6 +378,10 @@ namespace Thry.BeerPong
                         }
                     }
                 }
+            }
+            else
+            {
+                Respawn();
             }
         }
 
@@ -513,8 +525,6 @@ namespace Thry.BeerPong
             dropVelocity = (dropVelocity.magnitude + angularAddition) * dropVelocity.normalized;
 
             
-            Debug.Log("Angular: " + angularAddition);
-            Debug.Log("Calced: " + dropVelocity.magnitude);
             SendCustomEventDelayedFrames(nameof(OnDropDelayed), 1);
         }
 
@@ -523,7 +533,7 @@ namespace Thry.BeerPong
         {
             if (Networking.LocalPlayer.IsUserInVR())
             {
-                Debug.Log("[Thry][BP] Final: " + dropVelocity);
+                Debug.Log("[Thry][BP] DropVelocity: " + dropVelocity);
                 //Transfer the velocity to the selected vector
                 if (state[0] == STATE_LOCKED)
                 {
@@ -568,7 +578,7 @@ namespace Thry.BeerPong
             _special = 0;
             if (_mainScript.aimAssist > 0 || doFull)
             {
-                start_velocity = DoAimbotVectoring(start_velocity, transform.position, doFull?100:_mainScript.aimAssist);
+                start_velocity = DoAimbotVectoring(start_velocity, transform.position, doFull?1000:_mainScript.aimAssist);
                 startVelocityLocal = start_velocity;
             }
 
@@ -647,7 +657,13 @@ namespace Thry.BeerPong
             if (cup == null) return velocity;
             Vector3 cupOpening = cup.transform.position + Vector3.up * cup.GetBounds().size.y;
             Vector3 hitOnCupPlane = PredictTableHit(velocity, position, cupOpening.y);
-            if (Vector3.Distance(cupOpening, hitOnCupPlane) > strength) return velocity;
+            if (Vector3.Distance(cupOpening, hitOnCupPlane) > strength)
+            {
+                //Check if ball close to going past, if adjust angle for bounce aim assist
+                float distance = Vector3.Cross(new Vector3(velocity.x,0, velocity.z).normalized, new Vector3(cupOpening.x,0,cupOpening.z) - new Vector3(position.x, 0, position.z)).magnitude;
+                if (distance < strength) return OptimalVectorJustChangeY(velocity, position, cup);
+                return velocity;
+            }
             return OptimalVectorChangeStrength(velocity, position, cup);
         }
 
@@ -693,11 +709,23 @@ namespace Thry.BeerPong
             float g = -Physics.gravity.y;
 
             float v0 = d / Mathf.Sqrt(2 * (y0 - y + Mathf.Tan(w) * d) / g) / Mathf.Cos(w);
+            if (float.IsNaN(v0)) return velocity;
 
             Vector3 newDirection = horizonzalVector.normalized * horizonzalVelocity.magnitude;
             newDirection.y = velocity.y;
 
             return newDirection.normalized * v0;
+        }
+
+        private Vector3 OptimalVectorJustChangeY(Vector3 velocity, Vector3 position, ThryBP_Glass cup)
+        {
+            Vector3 horizonzalVector = cup.transform.position - position;
+            horizonzalVector.y = 0;
+            Vector3 horizonzalVelocity = velocity;
+            horizonzalVelocity.y = 0;
+            Vector3 newDirection = horizonzalVector.normalized * horizonzalVelocity.magnitude;
+            newDirection.y = velocity.y;
+            return newDirection;
         }
 
         private Vector3 OptimalVectorChangeAngle(Vector3 velocity, Vector3 position, float tableHeight, ThryBP_Glass aimedCup)
@@ -815,7 +843,7 @@ namespace Thry.BeerPong
             if(currentPlayer >= _mainScript.playerCountSlider.local_float)
             {
                 currentPlayer = 0;
-                SetColor();
+                _SetColor();
             }
             _rigidbody.velocity = Vector3.zero;
             _rigidbody.angularVelocity = Vector3.zero;
@@ -834,15 +862,14 @@ namespace Thry.BeerPong
         private void NextTeam()
         {
             currentPlayer = _mainScript.GetNextPlayer(currentPlayer);
-            SetColor();
+            _SetColor();
             RequestSerialization();
         }
 
-        private void SetColor()
+        public void _SetColor()
         {
             _renderer.material.color = _mainScript.GetPlayerColor(currentPlayer);
-            _mainScript.teamIndicatorMaterial.color = _renderer.material.color;
-            _mainScript.teamIndicatorMaterial.SetColor("_EmissionColor",_renderer.material.color);
+            _mainScript.SetActivePlayerColor(_renderer.material.color);
         }
 
         const float COLLISION_MAXIMUM_DISTANCE_FROM_CENTER = 0.95f;

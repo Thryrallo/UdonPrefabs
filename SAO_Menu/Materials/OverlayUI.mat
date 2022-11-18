@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: UI_Overrender
+  m_Name: OverlayUI
   m_Shader: {fileID: 4800000, guid: 288928f49b47635448ca594875a0e48d, type: 3}
   m_ShaderKeywords: UNITY_DITHERING
   m_LightmapFlags: 4

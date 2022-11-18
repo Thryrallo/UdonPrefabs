@@ -1,0 +1,2 @@
+You also need to drag the following prefabs into your scene for the SAO menu to work:
+path: Thry\General\[Thry]AvatarHeightTracker.prefab

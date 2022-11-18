@@ -2,6 +2,7 @@
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
+using Thry.Udon.Action;
 
 #if UNITY_EDITOR && !COMPILER_UDONSHARP
 using UnityEditor;
@@ -21,6 +22,14 @@ namespace Thry.SAO.Button
 
         [Header("Optional Reference")]
         public Menu menu;
+
+        Notification notificationSystem;
+
+        private void Start()
+        {
+            GameObject o = GameObject.Find("[Thry][NotificationSystem]");
+            if (o) notificationSystem = o.GetComponent<Notification>();
+        }
 
         public void OnInteraction()
         {
@@ -62,8 +71,32 @@ namespace Thry.SAO.Button
 
         private void ExecuteTeleport(Vector3 position, Quaternion rotation)
         {
-            Networking.LocalPlayer.TeleportTo(position, rotation);
-            if(menu != null) menu.CloseMenu();
+            bool isInRestrictedArea = false;
+            foreach(RaycastHit hit in Physics.RaycastAll(position + Vector3.up * 10, Vector3.down, 10))
+            {
+                if(hit.collider && hit.collider.gameObject)
+                {
+                    IsEmptyChecker isEmptyChecker = hit.collider.gameObject.GetComponent<IsEmptyChecker>();
+                    if (isEmptyChecker && isEmptyChecker._locker)
+                    {
+                        if (isEmptyChecker._locker.GetBool())
+                        {
+                            isInRestrictedArea = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (isInRestrictedArea)
+            {
+                Debug.Log("[Thry] Teleport denied.");
+                if (notificationSystem) notificationSystem.Deny("Denied.", "Target is in a locked area.");
+            }
+            else
+            {
+                Networking.LocalPlayer.TeleportTo(position, rotation);
+                if (menu != null) menu.CloseMenu();
+            }
         }
     }
 

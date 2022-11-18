@@ -13,17 +13,28 @@ namespace Thry.SAO
         public Texture playerJoinTexture;
         public Texture playerLeaveTexture;
 
+        [Header("Textures")]
+        public Texture tex_Allow;
+        public Texture tex_Deny;
+
         [Header("References")]
+        public GameObject canvas;
         public Animator animator;
 
         public UnityEngine.UI.Text textUI;
         public UnityEngine.UI.RawImage imageUI;
 
-        public GameObject canvas;
+        public UnityEngine.UI.Text details_textUI;
+        public GameObject details_background;
+        public GameObject details_forground;
+
+        public UnityEngine.UI.Image background;
 
         private string[] titleQueue = new string[100];
+        private string[] detailsQueue = new string[100];
         private Texture[] textureQueue = new Texture[100];
-        private Color[] colorQueue = new Color[100];
+        private Color[] iconColorQueue = new Color[100];
+        private Color[] backgroundColorQueue = new Color[100];
         private float[] durationQueue = new float[100];
         private int[] typeQueue = new int[100];
 
@@ -51,7 +62,7 @@ namespace Thry.SAO
         public string QueueWithParamText_param0;
         public void QueueWithParamText()
         {
-            Queue(QueueWithParamText_param0, null, defaultColor, 10, TYPE_NONE);
+            Queue(QueueWithParamText_param0, null, null, defaultColor, Color.white, 10, TYPE_NONE);
         }
 
         [HideInInspector]
@@ -60,14 +71,16 @@ namespace Thry.SAO
         public string QueueWithParamTextDuration_param1;
         public void QueueWithParamTextDuration()
         {
-            Queue(QueueWithParamTextDuration_param0, null, defaultColor, float.Parse(QueueWithParamTextDuration_param1), TYPE_NONE);
+            Queue(QueueWithParamTextDuration_param0, null, null, defaultColor, Color.white, float.Parse(QueueWithParamTextDuration_param1), TYPE_NONE);
         }
 
-        public void Queue(string title, Texture texture, Color textureColor, float duration, int type)
+        public void Queue(string title, string content, Texture texture, Color textureColor, Color backgroundColor, float duration, int type)
         {
             titleQueue[queueEnd] = title;
+            detailsQueue[queueEnd] = content;
             textureQueue[queueEnd] = texture;
-            colorQueue[queueEnd] = textureColor;
+            iconColorQueue[queueEnd] = textureColor;
+            backgroundColorQueue[queueEnd] = backgroundColor;
             durationQueue[queueEnd] = duration;
             typeQueue[queueEnd] = type;
             queueEnd = (queueEnd + 1) % titleQueue.Length;
@@ -85,13 +98,30 @@ namespace Thry.SAO
             {
                 textUI.text = titleQueue[queueStart];
                 imageUI.texture = textureQueue[queueStart];
-                imageUI.color = colorQueue[queueStart];
                 animator.SetFloat("speed", 1.0f / ScaleDuration(durationQueue[queueStart]));
                 if (typeQueue[queueStart] == TYPE_JOIN) queuedJoinNotifications -= 1;
                 else if (typeQueue[queueStart] == TYPE_LEAVE) queuedLeaveNotifications -= 1;
-                queueStart = (queueStart + 1) % titleQueue.Length;
+
+                bool hasDetails = detailsQueue[queueStart] != null;
+                details_background.SetActive(hasDetails);
+                details_forground.SetActive(hasDetails);
+                if(hasDetails) details_textUI.text = detailsQueue[queueStart];
+
+                //icon color
+                imageUI.color = iconColorQueue[queueStart];
+
+                //background color
+                background.material.color = backgroundColorQueue[queueStart];
+
+                //text color
+                float texColVal = 0.1f;
+                if (backgroundColorQueue[queueStart].maxColorComponent < 0.4f) texColVal = 0.9f;
+                textUI.color = new Color(texColVal, texColVal, texColVal);
+                if (hasDetails) details_textUI.color = textUI.color;
 
                 animator.SetTrigger("open");
+
+                queueStart = (queueStart + 1) % titleQueue.Length;
             }
         }
 
@@ -112,13 +142,13 @@ namespace Thry.SAO
                 {
                     if (queuedJoinNotifications > 5)
                     {
-                        Queue("A lot of players", playerJoinTexture, new Color(0.25f, 1, 0), 5f, TYPE_NONE);
+                        Queue("A lot of players", null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_NONE);
                         sentALotJoinNotification = true;
                     }
                     else
                     {
                         queuedJoinNotifications += 1;
-                        Queue(joinedPlayerApi.displayName, playerJoinTexture, new Color(0.25f, 1, 0), 5f, TYPE_JOIN);
+                        Queue(joinedPlayerApi.displayName, null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_JOIN);
                     }
                 }
             }
@@ -135,13 +165,13 @@ namespace Thry.SAO
                 {
                     if (queuedLeaveNotifications > 5)
                     {
-                        Queue("A lot of players", playerLeaveTexture, new Color(1, 0.5f, 0), 5f, TYPE_NONE);
+                        Queue("A lot of players", null, playerLeaveTexture, new Color(1, 0.5f, 0), Color.white, 5f, TYPE_NONE);
                         sentALotLeaveNotification = true;
                     }
                     else
                     {
                         queuedLeaveNotifications += 1;
-                        Queue(leftPlayerApi.displayName, playerLeaveTexture, new Color(1, 0.5f, 0), 5f, TYPE_LEAVE);
+                        Queue(leftPlayerApi.displayName, null, playerLeaveTexture, new Color(1, 0.5f, 0), Color.white, 5f, TYPE_LEAVE);
                     }
                 }
             }
@@ -149,6 +179,26 @@ namespace Thry.SAO
         private float ScaleDuration(float f)
         {
             return Mathf.Max(1, f * (-0.05f * GetLength() + 1));
+        }
+
+        public void Deny(string title, string details)
+        {
+            Queue(title, details, tex_Deny, Color.red, Color.white, 5, 0);
+        }
+
+        public void Allow(string title, string details)
+        {
+            Queue(title, details, tex_Allow, Color.green, Color.white, 5, 0);
+        }
+
+        public void TestNormalNotification()
+        {
+            Queue("Test Notification", null, null, Color.green, Color.red, 10, 0);
+        }
+
+        public void TestNormalNotification2()
+        {
+            Queue("Test Notification", "This has details for the notification", null, Color.blue, Color.black, 10, 0);
         }
 
         public void TestPlayerJoin()
@@ -163,13 +213,13 @@ namespace Thry.SAO
                 {
                     if (queuedJoinNotifications > 5)
                     {
-                        Queue("A lot of players", playerJoinTexture, new Color(0.25f, 1, 0), 5f, TYPE_NONE);
+                        Queue("A lot of players", null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_NONE);
                         sentALotJoinNotification = true;
                     }
                     else
                     {
                         queuedJoinNotifications += 1;
-                        Queue("Test Player", playerJoinTexture, new Color(0.25f, 1, 0), 5f, TYPE_JOIN);
+                        Queue("Test Player", null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_JOIN);
                     }
                 }
             }

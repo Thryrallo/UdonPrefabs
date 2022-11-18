@@ -7,14 +7,17 @@ using VRC.SDKBase;
 namespace Thry.BeerPong{
     public class ThryBP_Main : UdonSharpBehaviour
     {
+        [Header("Customization")]
+        public Color[] initialPlayerColors;
+
         [HideInInspector]
         public ThryBP_Player[] players;
+
+        [Header("Referecnes")]
         public Transform playersParent;
-        public Color[] initialPlayerColors;
         public GameObject[] tables;
         public Animator tablesAnimator;
         public Material teamIndicatorMaterial;
-        public int[] teamIndicatorMaterialIndexs;
 
         public Transform[] twoTeamPositions;
 
@@ -22,7 +25,7 @@ namespace Thry.BeerPong{
 
         public Transform[] fourTeamPositions;
 
-        public ThryBP_Ball ball;
+        public ThryBP_Ball[] balls;
 
         public Transform respawnHeight;
 
@@ -69,9 +72,12 @@ namespace Thry.BeerPong{
                 //if (Networking.IsOwner(gameObject)) players[i].ResetGlasses();
             }
 
-            ball.respawnHeight = respawnHeight;
-            ball._mainScript = this;
-            ball.Init();
+            foreach(ThryBP_Ball b in balls)
+            {
+                b.respawnHeight = respawnHeight;
+                b._mainScript = this;
+                b.Init();
+            }
 
             //Instanciate teamindactor material for multiple tables
             Material teamIndecatorMaterialIntance = null;
@@ -180,6 +186,14 @@ namespace Thry.BeerPong{
             return Color.white;
         }
 
+        public void SetActivePlayerColor(Color col)
+        {
+            if (gamemode == GM_KING_HILL) return;
+
+            teamIndicatorMaterial.color = col;
+            teamIndicatorMaterial.SetColor("_EmissionColor", col);
+        }
+
         public int PlayersWithCupsLeft()
         {
             int t = 0;
@@ -192,6 +206,8 @@ namespace Thry.BeerPong{
 
         public int GetNextPlayer(int c)
         {
+            if (gamemode == GM_KING_HILL) return c;
+
             c = (c + 1) % (int)playerCountSlider.local_float;
             if (PlayersWithCupsLeft() > 1)
             {
@@ -288,6 +304,31 @@ namespace Thry.BeerPong{
                 players[0].cups.overwriteRows = 1;
                 players[0].cups.ResetGlassesIfOwner(10, 2, Vector3.zero);
             }
+            ResetBalls();
+        }
+
+        void ResetBalls()
+        {
+            if(gamemode == GM_NORMAL || gamemode == GM_BIG_PONG)
+            {
+                for (int i = 1; i < balls.Length; i++)
+                    balls[i].gameObject.SetActive(false);
+                balls[0].gameObject.SetActive(true);
+                balls[0]._SetColor();
+                if (Networking.LocalPlayer.isMaster) balls[0].Respawn();
+            }else if(gamemode == GM_KING_HILL)
+            {
+                for (int i = 0; i < balls.Length; i++)
+                {
+                    balls[i].gameObject.SetActive(i < playerCountSlider.local_float);
+                    balls[i].currentPlayer = i;
+                    balls[i]._SetColor();
+                    if (Networking.LocalPlayer.isMaster) balls[i].Respawn();
+                }
+
+                teamIndicatorMaterial.color = Color.white;
+                teamIndicatorMaterial.SetColor("_EmissionColor", Color.white);
+            }
         }
 
         public void ChangeAmountOfPlayers()
@@ -324,7 +365,7 @@ namespace Thry.BeerPong{
                         players[i].cups.ResetGlassesIfOwner(1, 0, Vector3.zero);
                     }
                 }
-                ball.Respawn();
+                ResetBalls();
             }
         }
     }
