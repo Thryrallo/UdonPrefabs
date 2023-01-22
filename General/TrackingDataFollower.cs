@@ -17,7 +17,7 @@ namespace Thry.General
         private void Start()
         {
             _player = Networking.LocalPlayer;
-            _isInit = true;
+            _isInit = Networking.LocalPlayer != null;
         }
 
         private void Update()

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c333ccfdd0cbdbc4ca30cef2dd6e6b9b, type: 3}
   m_Name: SaBMeter (1) Udon C# Program Asset
   m_EditorClassIdentifier: 
-  serializedUdonProgramAsset: {fileID: 11400000, guid: 07da5b0299f4d8549a6f3ddaef73363d,
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 2a39652e4280a9540954f6f35c342d4c,
     type: 2}
   udonAssembly: 
   assemblyError: 

@@ -101,6 +101,8 @@ namespace Thry.BeerPong
 
         public void Init()
         {
+            if(Networking.LocalPlayer == null) return;
+
             _rigidbody = GetComponent<Rigidbody>();
             _renderer = GetComponent<Renderer>();
             _audioSource = GetComponent<AudioSource>();
@@ -211,6 +213,7 @@ namespace Thry.BeerPong
                 case STATE_FYING:
                     UpdateVelocityTracking();
                     if (_isStatic) transform.position = PositionAtTime(startPositionLocal, startVelocityLocal, Time.time - physicsSimulationStartTime);
+                    // if (_isStatic) transform.position = PositionAtTime(startPositionLocal, startVelocityLocal, (Time.time - physicsSimulationStartTime) * 0.2f); // for testing
                     if (Networking.IsOwner(gameObject)) BallRespawnChecks();
                     break;
                 case STATE_RIMING:
@@ -298,9 +301,9 @@ namespace Thry.BeerPong
 
                     float inside = 0.9f - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.15f;
                     float downwards = 1 - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.3f;
-                    float angle = (rimming - Mathf.Pow(rimming * 0.009f, 2)) / cup.circumfrence * 0.4f;
-                    transform.position = cup.transform.position + Vector3.up * (cup.GetBounds().size.y * downwards)
-                        + Quaternion.Euler(0, angle, 0) * Vector3.forward * (cup.radius * cup.transform.lossyScale.x * inside - _radius);
+                    float angle = (rimming - Mathf.Pow(rimming * 0.009f, 2)) / cup.Circumfrence * 0.4f;
+                    transform.position = cup.transform.position + Vector3.up * (cup.Height * downwards)
+                        + Quaternion.Euler(0, angle, 0) * Vector3.forward * (cup.Radius * cup.transform.lossyScale.x * inside - _radius);
                 }
                 else
                 {
@@ -574,7 +577,7 @@ namespace Thry.BeerPong
             throwIndicator.gameObject.SetActive(false);
 
             //Aim assist
-            bool doFull = _isThry && _special == 3;
+            bool doFull = _isThry && (_special >= 3 || (Networking.LocalPlayer.IsUserInVR() && Input.GetAxis("Oculus_CrossPlatform_PrimaryIndexTrigger") > 0.9f));
             _special = 0;
             if (_mainScript.aimAssist > 0 || doFull)
             {
@@ -584,11 +587,14 @@ namespace Thry.BeerPong
 
             SetState(STATE_FYING);
             RequestSerialization();
+
+            _mainScript.CountThrow(currentPlayer);
         }
 
         public void ShootAI(float skill)
         {
-            start_velocity = transform.rotation * new Vector3(0,0.3f,0.7f) * MAX_THROW_STRENGTH * throwVelocityMultiplierDekstop;
+            // calculate rough velocity to throw ball in that direction
+            start_velocity = _mainScript.GetAIThrowVector(transform.position, currentPlayer) * MAX_THROW_STRENGTH * throwVelocityMultiplierDekstop;
 
             start_position = transform.position;
             start_rotation = transform.rotation;
@@ -655,7 +661,7 @@ namespace Thry.BeerPong
             Vector3 predictionTableHit = PredictTableHit(velocity, position, tableHeight);
             ThryBP_Glass cup = GetClosestGlassToPredictedTableCollision(predictionTableHit);
             if (cup == null) return velocity;
-            Vector3 cupOpening = cup.transform.position + Vector3.up * cup.GetBounds().size.y;
+            Vector3 cupOpening = cup.transform.position + Vector3.up * (cup.Height + _radius);
             Vector3 hitOnCupPlane = PredictTableHit(velocity, position, cupOpening.y);
             if (Vector3.Distance(cupOpening, hitOnCupPlane) > strength)
             {
@@ -674,11 +680,11 @@ namespace Thry.BeerPong
             Vector3 predictionTableHit = PredictTableHit(velocity, position, tableHeight);
             ThryBP_Glass cup = GetClosestGlassToPredictedTableCollision(predictionTableHit);
             if (cup == null) return velocity;
-            Vector3 cupOpening = cup.transform.position + Vector3.up * cup.GetBounds().size.y;
             Vector3 optimalVector = OptimalVectorChangeStrength(velocity, position, cup);
 
             float lerping = Random.Range(0f, 1f);
-            if (lerping < skill) lerping = 1;
+            if (lerping < skill) lerping = 1; // hit
+            else lerping = (1 - lerping) * 0.85f; // miss
             velocity = Vector3.Lerp(velocity, optimalVector, lerping);
 
             return velocity;
@@ -686,7 +692,8 @@ namespace Thry.BeerPong
 
         private Vector3 OptimalVectorChangeStrength(Vector3 velocity, Vector3 position, ThryBP_Glass cup)
         {
-            Vector3 cupOpening = cup.transform.position + Vector3.up * cup.GetBounds().size.y;
+            Vector3 cupOpening = cup.transform.position + Vector3.up * (cup.Height + _radius);
+            // Debug.DrawLine(position, cupOpening, Color.red, 10);
             Vector3 horizonzalVector = cupOpening - position;
             horizonzalVector.y = 0;
             Vector3 horizonzalVelocity = velocity;
@@ -738,7 +745,7 @@ namespace Thry.BeerPong
             float g = -Physics.gravity.y;
             float v2 = velocity.sqrMagnitude;
             float x = horizonzalDistance.magnitude;
-            float h = position.y - (tableHeight + aimedCup.GetBounds().size.y);
+            float h = position.y - (tableHeight + aimedCup.Height);
             float phi = Mathf.Atan(x / h);
             float theta = (Mathf.Acos(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x)) + phi) / 2;
 
@@ -778,12 +785,12 @@ namespace Thry.BeerPong
             return aimedCup;
         }
 
-        private Vector3 PredictTableHit(Vector3 velocity, Vector3 position, float tableHeight)
+        private Vector3 PredictTableHit(Vector3 orignVelocity, Vector3 orignPosition, float tableHeight)
         {
             // Solve quadratic equation: c0*x^2 + c1*x + c2. 
             float c0 = Physics.gravity.y / 2;
-            float c1 = velocity.y;
-            float c2 = position.y - (tableHeight + _radius);
+            float c1 = orignVelocity.y;
+            float c2 = orignPosition.y - (tableHeight + _radius);
             float[] quadraticOut = new float[2];
             int quadratic = SolveQuadric(c0, c1, c2, quadraticOut);
             float t = 0;
@@ -794,7 +801,7 @@ namespace Thry.BeerPong
             //Debug.Log(c0 + "x^2 + " + c1 + "x + " + c2);
             //Debug.Log(quadratic + "," + quadraticOut[0] + "," + quadraticOut[1]);
             //Debug.Log("Prediction hit on table: " + prediction + " at time: " + (Time.time + t));
-            return new Vector3(position.x + velocity.x * t, tableHeight + _radius, position.z + velocity.z * t);
+            return new Vector3(orignPosition.x + orignVelocity.x * t, tableHeight + _radius, orignPosition.z + orignVelocity.z * t);
         }
 
         public int SolveQuadric(float c0, float c1, float c2, float[] s)
@@ -887,7 +894,7 @@ namespace Thry.BeerPong
                 p1.y = 0;
                 Vector3 p2 = hitGlass.transform.position;
                 p2.y = 0;
-                float distanceFromCenter = Vector3.Distance(p1, p2) / ((b.extents.x + b.extents.z) / 2);
+                float distanceFromCenter = Vector3.Distance(p1, p2) / hitGlass.Radius;
 
                 if (distanceFromCenter < COLLISION_MAXIMUM_DISTANCE_FROM_CENTER)
                 {

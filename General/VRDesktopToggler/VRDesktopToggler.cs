@@ -14,7 +14,7 @@ namespace Thry
 
         private void Start()
         {
-            bool isVR = Networking.LocalPlayer.IsUserInVR();
+            bool isVR = Networking.LocalPlayer != null && Networking.LocalPlayer.IsUserInVR();
             foreach (GameObject o in vrObjects) o.SetActive(isVR);
             foreach (GameObject o in desktopObjects) o.SetActive(!isVR);
         }

@@ -163,8 +163,8 @@ namespace Thry.General
                             }
                             if (u.GetProgramVariableType(udonValueNames[i]) == typeof(bool))
                             {
-                                udon_bool_Behvaiours[eventB] = udonBehaviours[i];
-                                udon_bool_Names[eventB++] = udonValueNames[i];
+                                udon_bool_Behvaiours[boolB] = udonBehaviours[i];
+                                udon_bool_Names[boolB++] = udonValueNames[i];
                             }
                         }
                     }

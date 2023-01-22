@@ -1,4 +1,5 @@
 ﻿
+using Thry.General;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -22,6 +23,9 @@ namespace Thry.BeerPong
 
         public bool _isAI;
         public float _aiSkill = 0.3f;
+        public ThryAction AiSkillSlider;
+
+        public bool UseAdaptiveAISkill = false;
 
         [UdonSynced]
         public Color playerColor;
@@ -37,6 +41,9 @@ namespace Thry.BeerPong
 
         [HideInInspector]
         public ThryBP_Main _mainScript;
+
+        [UdonSynced] int _numberOfThrows = 0;
+        [UdonSynced] int _numberOfHits = 0;
 
         public void Init(Transform[] anchors)
         {
@@ -58,6 +65,10 @@ namespace Thry.BeerPong
         public void ResetGlasses()
         {
             cups.ResetGlasses();
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+            _numberOfHits = 0;
+            _numberOfThrows = 0;
+            RequestSerialization();
         }
 
         public void RemoveCup(int row, int collum)
@@ -92,13 +103,38 @@ namespace Thry.BeerPong
             }
         }
 
+        public void AddThrow()
+        {
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+            _numberOfThrows++;
+            RequestSerialization();
+        }
+
+        public void AddHit()
+        {
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+            _numberOfHits++;
+            RequestSerialization();
+        }
+
+        public float GetSkill()
+        {
+            if(_isAI) return _aiSkill;
+            if(_numberOfThrows == 0) return 0.5f;
+            return (float)_numberOfHits / (float)_numberOfThrows;
+        }
+
         private ThryBP_Ball currentBall;
         public void ItsYourTurn(ThryBP_Ball ball)
         {
             currentBall = ball;
             if (_isAI)
             {
+                if(UseAdaptiveAISkill) AiSkillSlider.SetFloat(_mainScript.GetAdaptiveAIStrength(playerIndex));
                 SendCustomEventDelayedSeconds(nameof(AI_AIM), 2);
+            }else
+            {
+                _mainScript.UpdateAdaptiveAimAssist();
             }
         }
 

@@ -84,12 +84,17 @@ namespace Thry.BeerPong
 
         public float GetHeight()
         {
-            return glass.GetBounds().size.y;
+            return glass.Height * scale;
         }
 
         public float GetLength()
         {
-            return glass.GetBounds().size.z;
+            return glass.Diameter * scale;
+        }
+
+        public float GetUnscaledLength()
+        {
+            return glass.Diameter;
         }
 
         public ThryBP_Glass GetCup(int r, int c)
@@ -113,6 +118,11 @@ namespace Thry.BeerPong
             }
         }
 
+        public Transform GetCupAnchor()
+        {
+            return anchors[anchor_id];
+        }
+
         //========Networking========
         public override void OnDeserialization()
         {
@@ -133,8 +143,7 @@ namespace Thry.BeerPong
 
         private void UpdateUI()
         {
-            string s = score.ToString();
-            for (int i = s.Length; i < 4; i++) s = "0" + s;
+            string s = score.ToString("D4");
             foreach (UnityEngine.UI.Text t in ui_score_boards) t.text = s;
         }
 
@@ -434,9 +443,9 @@ namespace Thry.BeerPong
         public void InstanciateGlass(int row, int collum, int index)
         {
             float relativeX = (float)collum - MAX_ROWS;
-            Vector3 position = new Vector3(relativeX * glass.radius * scale, 0, row * glass.diameter * scale);
+            Vector3 position = new Vector3(relativeX * glass.Radius * scale, 0, row * glass.Diameter * scale);
             
-            GameObject instance = VRCInstantiate(glass.gameObject);
+            GameObject instance = Instantiate(glass.gameObject);
             instance.transform.SetParent(anchors[anchor_id]);
             instance.transform.localPosition = position + position_offset;
             instance.transform.localRotation = Quaternion.identity;
@@ -449,9 +458,10 @@ namespace Thry.BeerPong
             thryglass.player = _player;
             thryglass.anchor_id = anchor_id;
             thryglass.position_offset = position_offset;
-            thryglass.radius = glass.radius;
-            thryglass.diameter = glass.diameter;
-            thryglass.circumfrence = glass.circumfrence;
+            thryglass.Radius = glass.Radius * scale;
+            thryglass.Diameter = glass.Diameter * scale;
+            thryglass.Circumfrence = glass.Circumfrence * scale;
+            thryglass.Height = glass.Height * scale;
             
             activeGlassesGameObjects[index] = thryglass;
 

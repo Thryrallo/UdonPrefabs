@@ -118,7 +118,7 @@ public class AfkMessage : UdonSharpBehaviour
     // Clear the message list if master leaves
     override public void OnPlayerLeft(VRCPlayerApi player)
     {
-        if (player.displayName == _masterName)
+        if (player != null && player.displayName == _masterName)
         {
             if(Networking.IsOwner(gameObject))
                 Clear();

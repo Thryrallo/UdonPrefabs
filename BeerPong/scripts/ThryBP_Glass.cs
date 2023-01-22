@@ -26,9 +26,10 @@ namespace Thry.BeerPong
         public Renderer[] _playerColorRenderers;
         public int[] playerColorMaterialIncicies;
 
-        public float radius = -1;
-        public float diameter = -1;
-        public float circumfrence = -1;
+        public float Radius = -1;
+        public float Diameter = -1;
+        public float Circumfrence = -1;
+        public float Height = -1;
 
         public void SetColor(Color c)
         {
@@ -45,11 +46,29 @@ namespace Thry.BeerPong
 
         public void InitPrefab()
         {
-            radius = (GetBounds().extents.x + GetBounds().extents.z) / 2;
-            radius = radius / ((transform.lossyScale.x + transform.lossyScale.z) / 2);
+            // Get the bounds of normal scaled & rotated cup
+            Vector3 pos = transform.position;
+            Quaternion rot = transform.rotation;
+            Vector3 scale = transform.localScale;
+            Transform parent = transform.parent;
+            transform.SetParent(null);
+            transform.position = Vector3.zero;
+            transform.rotation = Quaternion.identity;
+            transform.localScale = Vector3.one;
 
-            diameter = 2 * radius;
-            circumfrence = Mathf.PI * diameter;
+            Bounds bounds = GetBounds();
+
+            transform.SetParent(parent);
+            transform.position = pos;
+            transform.rotation = rot;
+            transform.localScale = scale;
+
+            Radius = (bounds.extents.x + bounds.extents.z) / 2;
+            Radius = Radius / ((transform.lossyScale.x + transform.lossyScale.z) / 2);
+            Height = bounds.extents.y * 2 / transform.lossyScale.y;
+
+            Diameter = 2 * Radius;
+            Circumfrence = Mathf.PI * Diameter;
         }
     }
 }

@@ -30,6 +30,8 @@ namespace Thry.General
 
         VRCPlayerApi player;
 
+        bool isNotInit = true;
+
         void Start()
         {
             //Find Height Tracker
@@ -41,6 +43,7 @@ namespace Thry.General
             }
             _avatarHeightTracker = o.GetComponent<AvatarHeightTracker>();
             player = Networking.LocalPlayer;
+            isNotInit = Networking.LocalPlayer == null;
             if (isRightHand)
             {
                 hand = HumanBodyBones.RightHand;
@@ -72,6 +75,7 @@ namespace Thry.General
 
         public override void PostLateUpdate()
         {
+            if (isNotInit) return;
             //Roation
             transform.rotation = player.GetTrackingData(trackingDataType).rotation;
             transform.Rotate(0, 55, 0);
