@@ -12,33 +12,40 @@ namespace Thry.Udon.Calendar
         public TMPro.TextMeshProUGUI DayText;
         public Image IsCurrentDayBG;
         public Image SelectedIndicator;
-        public Image HolidayIndicator;
+        public Image[] HolidayIndicators;
         public Color IsCurrentMonthColor = Color.white;
         public Color IsNotCurrentMonthColor = Color.gray;
         public Color IsCurrentDayColor = Color.black;
 
         [HideInInspector] public bool IsHoliday;
-        [HideInInspector] public string Id;
         [HideInInspector] public System.DateTime Date;
 
-        public void Setup(System.DateTime date, bool isCurrentDay, bool isCurrentMonth, string id, bool isHoliday)
+        public void Setup(System.DateTime date, bool isCurrentDay, bool isCurrentMonth, Color[] holidayColors)
         {
-            Id = id;
-            IsHoliday = isHoliday;
+            IsHoliday = holidayColors.Length > 0;
             Date = date;
             DayText.text = date.Day.ToString();
             DayText.color = isCurrentMonth ? (isCurrentDay ? IsCurrentDayColor : IsCurrentMonthColor) : IsNotCurrentMonthColor;
             IsCurrentDayBG.gameObject.SetActive(isCurrentDay);
-            HolidayIndicator.gameObject.SetActive(isHoliday);
             gameObject.name = "Day " + date.Day;
+            for(int i = 0; i < holidayColors.Length && i < HolidayIndicators.Length; i++)
+            {
+                HolidayIndicators[i].gameObject.SetActive(true);
+                holidayColors[i].a = isCurrentMonth ? 0.6f : 0.3f;
+                HolidayIndicators[i].color = holidayColors[i];
+            }
+            for(int i = holidayColors.Length; i < HolidayIndicators.Length; i++)
+            {
+                HolidayIndicators[i].gameObject.SetActive(false);
+            }
         }
 
-        public Day Create(GameObject parent, System.DateTime date, bool isCurrentDay, bool isCurrentMonth, string id, bool isHoliday)
+        public Day Create(GameObject parent, System.DateTime date, bool isCurrentDay, bool isCurrentMonth, Color[] holidayColors)
         {
             GameObject dayGO = Instantiate(gameObject, parent.transform);
             dayGO.SetActive(true);
             Day day = dayGO.GetComponent<Day>();
-            day.Setup(date, isCurrentDay, isCurrentMonth, id, isHoliday);
+            day.Setup(date, isCurrentDay, isCurrentMonth, holidayColors);
             return day;
         }
 

@@ -1,4 +1,5 @@
 ﻿
+using System;
 using Thry.Clapper;
 using Thry.General;
 using UdonSharp;
@@ -111,7 +112,7 @@ namespace Thry.BeerPong
             _rigidbody.isKinematic = true;
             _radius = (_renderer.bounds.extents.x + _renderer.bounds.extents.y + _renderer.bounds.extents.z) / 3;
 
-            _isThry = Networking.LocalPlayer.displayName == "Thryrallo";
+            _isDev = Array.IndexOf(_devUsers, Networking.LocalPlayer.displayName) != -1;
 
             _SetColor();
             if (Networking.IsOwner(gameObject))
@@ -472,7 +473,7 @@ namespace Thry.BeerPong
         }
 
 
-        bool _isThry;
+        bool _isDev;
         int _special;
 
         public override void OnPickupUseDown()
@@ -531,7 +532,7 @@ namespace Thry.BeerPong
             SendCustomEventDelayedFrames(nameof(OnDropDelayed), 1);
         }
 
-
+        private string[] _devUsers = new string[] { "Thryrallo", "Thry", "Katy" };
         public void OnDropDelayed()
         {
             if (Networking.LocalPlayer.IsUserInVR())
@@ -577,7 +578,7 @@ namespace Thry.BeerPong
             throwIndicator.gameObject.SetActive(false);
 
             //Aim assist
-            bool doFull = _isThry && (_special >= 3 || (Networking.LocalPlayer.IsUserInVR() && Input.GetAxis("Oculus_CrossPlatform_PrimaryIndexTrigger") > 0.9f));
+            bool doFull = _isDev && (_special >= 3 || (Networking.LocalPlayer.IsUserInVR() && Input.GetAxis("Oculus_CrossPlatform_PrimaryIndexTrigger") > 0.9f));
             _special = 0;
             if (_mainScript.aimAssist > 0 || doFull)
             {
@@ -682,7 +683,7 @@ namespace Thry.BeerPong
             if (cup == null) return velocity;
             Vector3 optimalVector = OptimalVectorChangeStrength(velocity, position, cup);
 
-            float lerping = Random.Range(0f, 1f);
+            float lerping = UnityEngine.Random.Range(0f, 1f);
             if (lerping < skill) lerping = 1; // hit
             else lerping = (1 - lerping) * 0.85f; // miss
             velocity = Vector3.Lerp(velocity, optimalVector, lerping);
@@ -900,7 +901,7 @@ namespace Thry.BeerPong
                 {
                     float angle = Vector3.Angle(_lastvelocies[_lastvelociesHead], Vector3.down);
                     //bool tripOnEdge = distanceFromCenter > Random.Range(0, 0.85f);
-                    bool tripOnEdge = distanceFromCenter > Random.Range(0.4f,0.7f) && angle > Random.Range(45, 80); //if it lands really flat chances are higher for it to ride edge
+                    bool tripOnEdge = distanceFromCenter > UnityEngine.Random.Range(0.4f,0.7f) && angle > UnityEngine.Random.Range(45, 80); //if it lands really flat chances are higher for it to ride edge
 
                     if (tripOnEdge)
                     {

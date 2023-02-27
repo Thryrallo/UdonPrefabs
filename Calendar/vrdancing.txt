@@ -1,0 +1,7 @@
+Tuesday 1:00;Workout Session;(0,0,0.7)
+Wednesday 19:00;EU Open Session;(0.7,0,0)
+Thursday 1:00;NA Open Session;(0.7,0,0)
+Friday 1:00;Workout Session;(0,0,0.7)
+Saturday 20:00;EU Weekend Session;(0.7,0,0)
+Sunday 1:00;NA Weekend Session;(0.7,0,0)
+Saturday 18:00;Furry Session;(0,0.7,0)

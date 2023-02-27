@@ -149,6 +149,28 @@ namespace Thry.BeerPong
         {
             currentBall.ShootAI(_aiSkill);
         }
+
+        // For UI Calls
+        public void SyncSettingsToAllPlayers()
+        {
+            ThryBP_CupsSpawn src = this.cups;
+            for(int i=0;i<_mainScript.players.Length;i++)
+            {
+                ThryBP_Player p = _mainScript.players[i];
+                if (p == this) continue;
+                p.cups.rowsSlider.value = src.rowsSlider.value;
+                p.cups.shapeSelector.SetFloat(src.shapeSelector.GetFloat());
+            }
+        }
+
+        public void ResetAllPlayers()
+        {
+            for(int i=0;i<_mainScript.players.Length;i++)
+            {
+                ThryBP_Player p = _mainScript.players[i];
+                p.ResetGlasses();
+            }
+        }
     }
 }
  
