@@ -10,109 +10,116 @@ namespace Thry.BeerPong
 {
     public class ThryBP_CupsSpawn : UdonSharpBehaviour
     {
-        public ThryBP_Glass glass;
+        public ThryBP_Glass Glass;
 
-        public ThryBP_Player _player;
+        public ThryBP_Player Player;
 
-        //glasses
+        // glasses as an array of 
         [UdonSynced]
-        bool[] doesGlassExist = new bool[0];
+        byte[] _cupOwnersAtPositions = new byte[0];
 
         [HideInInspector]
-        public ThryBP_Glass[] activeGlassesGameObjects;
+        public ThryBP_Glass[] ActiveGlassesGameObjects;
 
         [UdonSynced]
-        public float scale = 1;
+        public float Scale = 1;
 
         [UdonSynced]
-        public int anchor_id;
+        public int Anchor_id;
 
         [UdonSynced]
-        public Vector3 position_offset;
+        public Vector3 Position_offset;
 
-        Transform[] anchors;
+        Transform[] _anchors;
 
         //hit counting
 
         [UdonSynced]
-        int hit = 0;
+        int _hit = 0;
 
         [HideInInspector]
         [UdonSynced]
-        public int existing_glasses_count = 0;
+        public int Existing_glasses_count = 0;
 
         //shape
-        public ThryAction shapeSelector;
+        public ThryAction ShapeSelector;
 
-        const int SHAPE_TRIANGLE = 0;
-        const int SHAPE_SQUARE = 1;
-        const int SHAPE_CIRCLE = 2;
+        public const int SHAPE_TRIANGLE = 0;
+        public const int SHAPE_SQUARE = 1;
+        public const int SHAPE_CIRCLE = 2;
 
         //rows
-        public UnityEngine.UI.Slider rowsSlider;
+        public UnityEngine.UI.Slider RowsSlider;
 
         const int MAX_ROWS = 11;
         int X_PER_ROW = 0;
 
         [HideInInspector]
-        public int overwriteShape = -1;
+        public int OverwriteShape = -1;
         [HideInInspector]
-        public int overwriteRows = -1;
+        public int OverwriteRows = -1;
 
         //score (is counted here cause the owner of this object is the one who hits a glass it)
         [UdonSynced]
-        int score;
-        public UnityEngine.UI.Text[] ui_score_boards;
+        int _score;
+        public UnityEngine.UI.Text[] UI_score_boards;
+
+        const byte PLAYER_VALUE_NONE = 255;
 
         public void Init(Transform[] anchors)
         {
-            glass.InitPrefab();
-            glass.gameObject.SetActive(false);
+            Glass.InitPrefab();
+            Glass.gameObject.SetActive(false);
 
-            this.anchors = new Transform[anchors.Length];
-            Array.Copy(anchors, this.anchors, anchors.Length);
-            this.anchors[0] = transform.parent;
+            this._anchors = new Transform[anchors.Length];
+            Array.Copy(anchors, this._anchors, anchors.Length);
+            this._anchors[0] = transform.parent;
 
             //Reparenting to always active gameobject, else if parent is not active this will not sync values
             transform.SetParent(transform.parent.parent.parent, true);
-            transform.name = _player.name + "_Cups";
+            transform.name = Player.name + "_Cups";
 
             X_PER_ROW = MAX_ROWS + MAX_ROWS;
-            doesGlassExist = new bool[MAX_ROWS * X_PER_ROW];
-            activeGlassesGameObjects = new ThryBP_Glass[MAX_ROWS * X_PER_ROW];
+            _cupOwnersAtPositions = new byte[MAX_ROWS * X_PER_ROW];
+            ActiveGlassesGameObjects = new ThryBP_Glass[MAX_ROWS * X_PER_ROW];
+            // fill _glassOwnersAtPositions with PLAYER_VALUE_NONE
+            for (int i = 0; i < _cupOwnersAtPositions.Length; i++)
+            {
+                _cupOwnersAtPositions[i] = PLAYER_VALUE_NONE;
+            }
         }
 
-        public float GetHeight()
+        public float GetGlobalHeight()
         {
-            return glass.Height * scale;
+            return Glass.GlobalHeight;
         }
 
-        public float GetLength()
+        public float GetLocalHeight()
         {
-            return glass.Diameter * scale;
+            return Glass.LocalHeight * Scale;
         }
 
-        public float GetUnscaledLength()
+        public float GetUnscaledLocalLength()
         {
-            return glass.Diameter;
+            return Glass.LocalDiameter;
         }
 
         public ThryBP_Glass GetCup(int r, int c)
         {
-            return activeGlassesGameObjects[r * X_PER_ROW + c];
+            return ActiveGlassesGameObjects[r * X_PER_ROW + c];
         }
 
         public void RemoveCup(int row, int collum)
         {
             //Null check. I am not sure if it is feasible that this is even called before doesGlassExist is initilized, but just to be sure
-            if (doesGlassExist == null) return;
+            if (_cupOwnersAtPositions == null) return;
             if (Networking.IsOwner(gameObject) == false) Networking.SetOwner(Networking.LocalPlayer, gameObject);
             int index = row * X_PER_ROW + collum;
-            if (index < doesGlassExist.Length)
+            if (index < _cupOwnersAtPositions.Length)
             {
-                hit++;
-                existing_glasses_count--;
-                doesGlassExist[index] = false;
+                _hit++;
+                Existing_glasses_count--;
+                _cupOwnersAtPositions[index] = PLAYER_VALUE_NONE;
                 SyncGlasses();
                 RequestSerialization();
             }
@@ -120,7 +127,7 @@ namespace Thry.BeerPong
 
         public Transform GetCupAnchor()
         {
-            return anchors[anchor_id];
+            return _anchors[Anchor_id];
         }
 
         //========Networking========
@@ -128,7 +135,7 @@ namespace Thry.BeerPong
         {
             UpdateUI();
             //Check is done in case doesGlassExist was not synced yet and is instead null, which will cause problems
-            if (doesGlassExist != null) SyncGlasses();
+            if (_cupOwnersAtPositions != null) SyncGlasses();
         }
 
         //=======Score==========
@@ -136,22 +143,22 @@ namespace Thry.BeerPong
         public void AddToScore(int a)
         {
             if (Networking.IsOwner(gameObject) == false) Networking.SetOwner(Networking.LocalPlayer, gameObject);
-            score += a;
+            _score += a;
             UpdateUI();
             RequestSerialization();
         }
 
         private void UpdateUI()
         {
-            string s = score.ToString("D4");
-            foreach (UnityEngine.UI.Text t in ui_score_boards) t.text = s;
+            string s = _score.ToString("D4");
+            foreach (UnityEngine.UI.Text t in UI_score_boards) t.text = s;
         }
 
         //=======Array reseting========
 
         public void Rerack()
         {
-            if (_player._mainScript.gamemode != 0) return;
+            if (Player.MainScript.Gamemode != 0) return;
             if (Networking.IsOwner(gameObject)) RerackOwner();
             else SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, nameof(RerackOwner));
         }
@@ -159,38 +166,38 @@ namespace Thry.BeerPong
         public void RerackOwner()
         {
             //Remove all glasses
-            for(int i = 0; i < doesGlassExist.Length; i++)
+            for(int i = 0; i < _cupOwnersAtPositions.Length; i++)
             {
-                doesGlassExist[i] = false;
+                _cupOwnersAtPositions[i] = PLAYER_VALUE_NONE;
             }
 
             //Replace glasses
-            int shape = (int)shapeSelector.local_float;
+            int shape = (int)ShapeSelector.local_float;
             int remove = 0;
             int rows = 0;
             switch (shape)
             {
                 case SHAPE_SQUARE:
-                    rows = (int)Mathf.Sqrt(existing_glasses_count - 0.1f) + 1;
-                    remove = PlaceCupsAsSquare(rows) - existing_glasses_count;
+                    rows = (int)Mathf.Sqrt(Existing_glasses_count - 0.1f) + 1;
+                    remove = PlaceCupsAsSquare(rows) - Existing_glasses_count;
                     break;
                 case SHAPE_CIRCLE:
-                    rows = (int)Mathf.Sqrt((existing_glasses_count-0.1f) * 2) + 1;
-                    remove = PlaceCupsAsCircle(rows) - existing_glasses_count;
+                    rows = (int)Mathf.Sqrt((Existing_glasses_count-0.1f) * 2) + 1;
+                    remove = PlaceCupsAsCircle(rows) - Existing_glasses_count;
                     break;
                 default:
                     //sqrt(2 x+0.25)-0.5
-                    rows = (int)(Mathf.Sqrt(2 * (existing_glasses_count - 0.1f) + 0.25f) - 0.5f) + 1;
-                    remove = PlaceCupsAsPyramid(rows) - existing_glasses_count;
+                    rows = (int)(Mathf.Sqrt(2 * (Existing_glasses_count - 0.1f) + 0.25f) - 0.5f) + 1;
+                    remove = PlaceCupsAsPyramid(rows) - Existing_glasses_count;
                     break;
             }
 
             //Remove glasses placed too many
-            for (int i = doesGlassExist.Length-1; i >= 0; i--)
+            for (int i = _cupOwnersAtPositions.Length-1; i >= 0; i--)
             {
-                if(doesGlassExist[i] && remove > 0)
+                if(_cupOwnersAtPositions[i] != PLAYER_VALUE_NONE && remove > 0)
                 {
-                    doesGlassExist[i] = false;
+                    _cupOwnersAtPositions[i] = PLAYER_VALUE_NONE;
                     remove--;
                     if (remove == 0) break;
                 }
@@ -209,44 +216,67 @@ namespace Thry.BeerPong
         public void ResetGlassesIfNoneHit()
         {
             if (!Networking.IsOwner(gameObject)) return;
-            if (hit > 0) return;
+            if (_hit > 0) return;
             ResetGlassesOwner();
         }
 
-        public void ResetGlassesIfOwner(float scale, int anchor_id, Vector3 position_offset)
+        public void ResetCupsIfOwner(float scale, int anchor_id, Vector3 position_offset)
         {
             if (!Networking.IsOwner(gameObject)) return;
-            this.scale = scale;
-            this.anchor_id = anchor_id;
-            this.position_offset = position_offset;
+            this.Scale = scale;
+            this.Anchor_id = anchor_id;
+            this.Position_offset = position_offset;
             ResetGlassesOwner();
         }
 
         public void ResetGlassesOwner()
         {
-            int placeRows = (int)rowsSlider.value;
-            int shape = (int)shapeSelector.local_float;
+            if(Networking.LocalPlayer == null) return; // prevent null ref on upload
+            //Remove all glasses
+            for(int i = 0; i < _cupOwnersAtPositions.Length; i++)
+            {
+                _cupOwnersAtPositions[i] = PLAYER_VALUE_NONE;
+            }
 
-            if (overwriteRows > -1) placeRows = overwriteRows;
-            if (overwriteShape > -1) shape = overwriteShape;
+            int placeRows = (int)RowsSlider.value;
+            int shape = (int)ShapeSelector.local_float;
+
+            if (OverwriteRows > -1) placeRows = OverwriteRows;
+            if (OverwriteShape > -1) shape = OverwriteShape;
 
             switch (shape)
             {
                 case SHAPE_SQUARE:
-                    existing_glasses_count = PlaceCupsAsSquare(placeRows);
+                    Existing_glasses_count = PlaceCupsAsSquare(placeRows);
                     break;
                 case SHAPE_CIRCLE:
-                    existing_glasses_count = PlaceCupsAsCircle(placeRows);
+                    Existing_glasses_count = PlaceCupsAsCircle(placeRows);
                     break;
                 default:
-                    existing_glasses_count = PlaceCupsAsPyramid(placeRows);
+                    Existing_glasses_count = PlaceCupsAsPyramid(placeRows);
                     break;
             }
-            score = 0;
-            hit = 0;
+            if(Player.MainScript.Gamemode == ThryBP_Main.GM_MAYHEM)
+            {
+                RandomizeCupOwnersOfExistingCups();
+            }
+            _score = 0;
+            _hit = 0;
             UpdateUI();
             SyncGlasses();
             RequestSerialization();
+        }
+
+        private void RandomizeCupOwnersOfExistingCups()
+        {
+            int max = Player.MainScript.players.Length;
+            for (int i = 0; i < _cupOwnersAtPositions.Length; i++)
+            {
+                if (_cupOwnersAtPositions[i] != PLAYER_VALUE_NONE)
+                {
+                    _cupOwnersAtPositions[i] = (byte)UnityEngine.Random.Range(0, max);
+                }
+            }
         }
 
         private int PlaceCupsAsPyramid(int placeRows)
@@ -266,12 +296,11 @@ namespace Thry.BeerPong
                         bool isInTriangle = Mathf.Abs(c - MAX_ROWS) < cupsInRow;
                         bool isCup = (evenRow == evenCollum) && isInTriangle;
 
-                        doesGlassExist[r * X_PER_ROW + c] = isCup;
-                        if (isCup) existing_glasses_count++;
-                    }
-                    else
-                    {
-                        doesGlassExist[r * X_PER_ROW + c] = false;
+                        if (isCup)
+                        {
+                            _cupOwnersAtPositions[r * X_PER_ROW + c] = (byte)Player.PlayerIndex;
+                            existing_glasses_count++;
+                        }
                     }
                 }
             }
@@ -294,12 +323,11 @@ namespace Thry.BeerPong
                         bool isInSquare = Mathf.Abs(c - MAX_ROWS) < placeRows;
                         isCup = (evenCollum == placeOnEvens) && isInSquare;
 
-                        doesGlassExist[r * X_PER_ROW + c] = isCup;
-                        if (isCup) existing_glasses_count++;
-                    }
-                    else
-                    {
-                        doesGlassExist[r * X_PER_ROW + c] = false;
+                        if (isCup)
+                        {
+                            _cupOwnersAtPositions[r * X_PER_ROW + c] = (byte)Player.PlayerIndex;
+                            existing_glasses_count++;
+                        }
                     }
                 }
             }
@@ -339,12 +367,11 @@ namespace Thry.BeerPong
 
                         bool isInCircle = Mathf.Pow(x, 2) + Mathf.Pow(y, 2) <= Mathf.Pow(radius, 2);
 
-                        doesGlassExist[r * X_PER_ROW + c] = isInCircle;
-                        if (isInCircle) existing_glasses_count++;
-                    }
-                    else
-                    {
-                        doesGlassExist[r * X_PER_ROW + c] = false;
+                        if (isInCircle)
+                        {
+                            _cupOwnersAtPositions[r * X_PER_ROW + c] = (byte)Player.PlayerIndex;
+                            existing_glasses_count++;
+                        }
                     }
                 }
             }
@@ -370,35 +397,36 @@ namespace Thry.BeerPong
         public void _SyncGlass()
         {
             int index = syncR * X_PER_ROW + syncC;
-            if(index >= doesGlassExist.Length)
+            if(index >= _cupOwnersAtPositions.Length)
             {
                 syncing = false;
                 Debug.Log("[BeerPong][Error] doesGlassExist index > doesGlassExist.length");
                 return;
             }
-            if (doesGlassExist[index])
+            if (_cupOwnersAtPositions[index] != PLAYER_VALUE_NONE)
             {
-                if (Utilities.IsValid(activeGlassesGameObjects[index]))
+                if (Utilities.IsValid(ActiveGlassesGameObjects[index]))
                 {
-                    //Scale incorrect
-                    if(activeGlassesGameObjects[index].transform.localScale.x != scale 
-                        || activeGlassesGameObjects[index].anchor_id != anchor_id
-                        || activeGlassesGameObjects[index].position_offset != position_offset)
+                    // Cup is Incorrect
+                    if( ActiveGlassesGameObjects[index].PlayerCupOwner.PlayerIndex != _cupOwnersAtPositions[index]
+                        || ActiveGlassesGameObjects[index].transform.localScale.x != Scale 
+                        || ActiveGlassesGameObjects[index].Anchor_id != Anchor_id
+                        || ActiveGlassesGameObjects[index].Position_offset != Position_offset)
                     {
-                        Destroy(activeGlassesGameObjects[index].gameObject);
-                        InstanciateGlass(syncR, syncC, index);
+                        Destroy(ActiveGlassesGameObjects[index].gameObject);
+                        InstanciateCup(syncR, syncC, index, _cupOwnersAtPositions[index]);
                     }
                 }
                 else
                 {
-                    InstanciateGlass(syncR, syncC, index);
+                    InstanciateCup(syncR, syncC, index, _cupOwnersAtPositions[index]);
                 }
             }
             else
             {
-                if (Utilities.IsValid(activeGlassesGameObjects[index]))
+                if (Utilities.IsValid(ActiveGlassesGameObjects[index]))
                 {
-                    Destroy(activeGlassesGameObjects[index].gameObject);
+                    Destroy(ActiveGlassesGameObjects[index].gameObject);
                 }
             }
             syncC++;
@@ -414,9 +442,9 @@ namespace Thry.BeerPong
                 for (int c = 0; c < X_PER_ROW; c++)
                 {
                     int index = r * X_PER_ROW + c;
-                    if (Utilities.IsValid(activeGlassesGameObjects[index]))
+                    if (Utilities.IsValid(ActiveGlassesGameObjects[index]))
                     {
-                        Destroy(activeGlassesGameObjects[index].gameObject);
+                        Destroy(ActiveGlassesGameObjects[index].gameObject);
                     }
                 }
             }
@@ -424,15 +452,15 @@ namespace Thry.BeerPong
 
         public void SyncColor()
         {
-            if (_player.randomColor) return; //Dont sync colors if color should be random => doenst really need to be in those cases. makes for better effect sometimes if it doesnt swap
+            if (Player.DoRandomCupColor) return; //Dont sync colors if color should be random => doenst really need to be in those cases. makes for better effect sometimes if it doesnt swap
             for (int r = 0; r < MAX_ROWS; r++)
             {
                 for (int c = 0; c < X_PER_ROW; c++)
                 {
                     int index = r * X_PER_ROW + c;
-                    if (doesGlassExist[index] && Utilities.IsValid(activeGlassesGameObjects[index]))
+                    if (_cupOwnersAtPositions[index] != PLAYER_VALUE_NONE && Utilities.IsValid(ActiveGlassesGameObjects[index]))
                     {
-                        SetColor(activeGlassesGameObjects[index], index);
+                        ActiveGlassesGameObjects[index].UpdateColor(index);
                     }
                 }
             }
@@ -440,48 +468,35 @@ namespace Thry.BeerPong
 
         //Instanciating
 
-        public void InstanciateGlass(int row, int collum, int index)
+        public void InstanciateCup(int row, int collum, int index, int cupOwner)
         {
             float relativeX = (float)collum - MAX_ROWS;
-            Vector3 position = new Vector3(relativeX * glass.Radius * scale, 0, row * glass.Diameter * scale);
+            Vector3 position = new Vector3(relativeX * Glass.LocalRadius * Scale, 0, row * Glass.LocalDiameter * Scale);
             
-            GameObject instance = Instantiate(glass.gameObject);
-            instance.transform.SetParent(anchors[anchor_id]);
-            instance.transform.localPosition = position + position_offset;
+            GameObject instance = Instantiate(Glass.gameObject);
+            instance.transform.SetParent(_anchors[Anchor_id]);
+            instance.transform.localPosition = position + Position_offset;
             instance.transform.localRotation = Quaternion.identity;
-            instance.transform.localScale = Vector3.one * scale;
+            instance.transform.localScale = Vector3.one * Scale;
             instance.SetActive(true);
 
-            ThryBP_Glass thryglass = instance.GetComponent<ThryBP_Glass>();
-            thryglass.row = row;
-            thryglass.collum = collum;
-            thryglass.player = _player;
-            thryglass.anchor_id = anchor_id;
-            thryglass.position_offset = position_offset;
-            thryglass.Radius = glass.Radius * scale;
-            thryglass.Diameter = glass.Diameter * scale;
-            thryglass.Circumfrence = glass.Circumfrence * scale;
-            thryglass.Height = glass.Height * scale;
+            ThryBP_Glass cup = instance.GetComponent<ThryBP_Glass>();
+            cup.Row = row;
+            cup.Column = collum;
+            cup.PlayerCupOwner = Player.MainScript.players[cupOwner];
+            cup.PlayerAnchorSide = Player;
+            cup.Anchor_id = Anchor_id;
+            cup.Position_offset = Position_offset;
+            cup.TableScaleTransform = Player.MainScript.transform;
+
+            cup.LocalRadius = Glass.LocalRadius * Scale;
+            cup.LocalDiameter = Glass.LocalDiameter * Scale;
+            cup.LocalCircumfrence = Glass.LocalCircumfrence * Scale;
+            cup.LocalHeight = Glass.LocalHeight * Scale;
             
-            activeGlassesGameObjects[index] = thryglass;
+            ActiveGlassesGameObjects[index] = cup;
 
-            SetColor(thryglass, index);
+            cup.UpdateColor(index);
         }
-
-        //=======Array syncing========
-
-        public void SetColor(ThryBP_Glass g, int index)
-        {
-            if (_player.randomColor)
-            {
-                UnityEngine.Random.InitState(index);
-                g.SetColor(new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value));
-            }
-            else
-            {
-                g.SetColor(_player.playerColor);
-            }
-        }
-
     }
 }

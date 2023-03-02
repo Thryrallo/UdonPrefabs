@@ -9,15 +9,17 @@ namespace Thry.BeerPong
     public class ThryBP_Glass : UdonSharpBehaviour
     {
         [HideInInspector]
-        public ThryBP_Player player;
+        public ThryBP_Player PlayerCupOwner;
         [HideInInspector]
-        public int row;
+        public ThryBP_Player PlayerAnchorSide;
         [HideInInspector]
-        public int collum;
+        public int Row;
         [HideInInspector]
-        public int anchor_id;
+        public int Column;
         [HideInInspector]
-        public Vector3 position_offset;
+        public int Anchor_id;
+        [HideInInspector]
+        public Vector3 Position_offset;
 
         public MeshCollider colliderForThrow;
         public GameObject colliderInside;
@@ -26,10 +28,26 @@ namespace Thry.BeerPong
         public Renderer[] _playerColorRenderers;
         public int[] playerColorMaterialIncicies;
 
-        public float Radius = -1;
-        public float Diameter = -1;
-        public float Circumfrence = -1;
-        public float Height = -1;
+        public float LocalRadius = -1;
+        public float LocalDiameter = -1;
+        public float LocalCircumfrence = -1;
+        public float LocalHeight = -1;
+
+        [HideInInspector]
+        public Transform TableScaleTransform;
+
+        public void UpdateColor(int index)
+        {
+            if (PlayerCupOwner.DoRandomCupColor)
+            {
+                UnityEngine.Random.InitState(index);
+                SetColor(new Color(UnityEngine.Random.value, UnityEngine.Random.value, UnityEngine.Random.value));
+            }
+            else
+            {
+                SetColor(PlayerCupOwner.playerColor);
+            }
+        }
 
         public void SetColor(Color c)
         {
@@ -44,31 +62,56 @@ namespace Thry.BeerPong
             return boundsRenderer.bounds;
         }
 
+        public float GlobalHeight
+        {
+            get
+            {
+                return LocalHeight * TableScaleTransform.lossyScale.y;
+            }
+        }
+
+        public float GlobalRadius
+        {
+            get
+            {
+                return LocalRadius * TableScaleTransform.lossyScale.x;
+            }
+        }
+
+        public float GlobalDiameter
+        {
+            get
+            {
+                return LocalDiameter * TableScaleTransform.lossyScale.x;
+            }
+        }
+
+        public float GlobalCircumfrence
+        {
+            get
+            {
+                return LocalCircumfrence * TableScaleTransform.lossyScale.x;
+            }
+        }
+
         public void InitPrefab()
         {
-            // Get the bounds of normal scaled & rotated cup
-            Vector3 pos = transform.position;
+            // Get the bounds with the rotation set to 0
             Quaternion rot = transform.rotation;
-            Vector3 scale = transform.localScale;
-            Transform parent = transform.parent;
-            transform.SetParent(null);
-            transform.position = Vector3.zero;
             transform.rotation = Quaternion.identity;
-            transform.localScale = Vector3.one;
 
             Bounds bounds = GetBounds();
 
-            transform.SetParent(parent);
-            transform.position = pos;
             transform.rotation = rot;
-            transform.localScale = scale;
 
-            Radius = (bounds.extents.x + bounds.extents.z) / 2;
-            Radius = Radius / ((transform.lossyScale.x + transform.lossyScale.z) / 2);
-            Height = bounds.extents.y * 2 / transform.lossyScale.y;
+            float radius = (bounds.extents.x + bounds.extents.z) / 2;
+            float height = bounds.extents.y * 2;
 
-            Diameter = 2 * Radius;
-            Circumfrence = Mathf.PI * Diameter;
+            LocalRadius = radius / transform.lossyScale.x;
+            LocalHeight = height / transform.lossyScale.y;
+
+            LocalDiameter = 2 * LocalRadius;
+            LocalCircumfrence = Mathf.PI * LocalHeight;
         }
     }
 }

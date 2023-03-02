@@ -12,8 +12,6 @@ namespace Thry.BeerPong
 
         public Transform ballSpwanpoint;
 
-        public Transform ui;
-
         public Transform uiButton;
         private Material uiButtonMaterial;
 
@@ -34,13 +32,13 @@ namespace Thry.BeerPong
 
         [UdonSynced]
         [HideInInspector]
-        public bool randomColor = false;
+        public bool DoRandomCupColor = false;
 
         [HideInInspector]
-        public int playerIndex;
+        public int PlayerIndex;
 
         [HideInInspector]
-        public ThryBP_Main _mainScript;
+        public ThryBP_Main MainScript;
 
         [UdonSynced] int _numberOfThrows = 0;
         [UdonSynced] int _numberOfHits = 0;
@@ -94,10 +92,10 @@ namespace Thry.BeerPong
 
         public void SetRandomColor(bool r)
         {
-            if(randomColor != r)
+            if(DoRandomCupColor != r)
             {
                 Networking.SetOwner(Networking.LocalPlayer, gameObject);
-                randomColor = r;
+                DoRandomCupColor = r;
                 OnDeserialization();
                 RequestSerialization();
             }
@@ -130,11 +128,8 @@ namespace Thry.BeerPong
             currentBall = ball;
             if (_isAI)
             {
-                if(UseAdaptiveAISkill) AiSkillSlider.SetFloat(_mainScript.GetAdaptiveAIStrength(playerIndex));
+                if(UseAdaptiveAISkill) AiSkillSlider.SetFloat(MainScript.GetAdaptiveAIStrength(PlayerIndex));
                 SendCustomEventDelayedSeconds(nameof(AI_AIM), 2);
-            }else
-            {
-                _mainScript.UpdateAdaptiveAimAssist();
             }
         }
 
@@ -154,20 +149,20 @@ namespace Thry.BeerPong
         public void SyncSettingsToAllPlayers()
         {
             ThryBP_CupsSpawn src = this.cups;
-            for(int i=0;i<_mainScript.players.Length;i++)
+            for(int i=0;i<MainScript.players.Length;i++)
             {
-                ThryBP_Player p = _mainScript.players[i];
+                ThryBP_Player p = MainScript.players[i];
                 if (p == this) continue;
-                p.cups.rowsSlider.value = src.rowsSlider.value;
-                p.cups.shapeSelector.SetFloat(src.shapeSelector.GetFloat());
+                p.cups.RowsSlider.value = src.RowsSlider.value;
+                p.cups.ShapeSelector.SetFloat(src.ShapeSelector.GetFloat());
             }
         }
 
         public void ResetAllPlayers()
         {
-            for(int i=0;i<_mainScript.players.Length;i++)
+            for(int i=0;i<MainScript.players.Length;i++)
             {
-                ThryBP_Player p = _mainScript.players[i];
+                ThryBP_Player p = MainScript.players[i];
                 p.ResetGlasses();
             }
         }

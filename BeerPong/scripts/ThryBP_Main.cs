@@ -33,8 +33,8 @@ namespace Thry.BeerPong{
 
         public Transform cupsCollector;
 
-        public bool canHitOwnCups = false;
-        public bool friendlyFire = true;
+        public bool AllowSelfFire = false;
+        public bool AllowFriendlyFire = true;
 
         public ThryAction playerCountSlider;
         public ThryAction toggleTeams;
@@ -42,21 +42,23 @@ namespace Thry.BeerPong{
         public ThryAction gamemodeSelection;
         public ThryAction AdaptiveAimAssistToggle;
         public ThryAction AimAssistSlider;
+        public ThryAction LastAimAssistPublsher;
 
-        public Transform kingOfTheHillParent;
+        public Transform KingOfTheHillParent;
 
         [HideInInspector]
-        public float aimAssist;
+        public float AimAssist;
         [HideInInspector]
         public bool EnableAdaptiveAimAssit;
 
-        private int teamSize = 1;
+        private int _teamSize = 1;
         [HideInInspector]
-        public int gamemode;
+        public int Gamemode;
 
         public const int GM_NORMAL = 0;
         public const int GM_KING_HILL = 1;
         public const int GM_BIG_PONG = 2;
+        public const int GM_MAYHEM = 3;
 
         int _localPlayerThrows = 0;
         int _localPlayerHits = 0;
@@ -81,14 +83,14 @@ namespace Thry.BeerPong{
             _myAimAssistValue = _aimAssistDefault;
 
             Transform[] anchors = new Transform[3];
-            anchors[1] = kingOfTheHillParent;
-            anchors[2] = kingOfTheHillParent;
+            anchors[1] = KingOfTheHillParent;
+            anchors[2] = KingOfTheHillParent;
 
             for (int i = 0; i < players.Length; i++)
             {
                 players[i] = playersParent.GetChild(i).GetComponent<ThryBP_Player>();
-                players[i].playerIndex = i;
-                players[i]._mainScript = this;
+                players[i].PlayerIndex = i;
+                players[i].MainScript = this;
                 if (i < initialPlayerColors.Length) players[i].playerColor = initialPlayerColors[i];
                 players[i].Init(anchors);
                 //if (Networking.IsOwner(gameObject)) players[i].ResetGlasses();
@@ -97,7 +99,7 @@ namespace Thry.BeerPong{
             foreach(ThryBP_Ball b in balls)
             {
                 b.respawnHeight = respawnHeight;
-                b._mainScript = this;
+                b.MainScript = this;
                 b.Init();
             }
 
@@ -137,10 +139,13 @@ namespace Thry.BeerPong{
             if(!EnableAdaptiveAimAssit)
             {
                 AimAssistSlider.SetFloat(_aimAssistDefault);
+            }else
+            {
+                AimAssistSlider.SetFloat(_myAimAssistValue);
             }
         }
 
-        public void UpdateAdaptiveAimAssist()
+        public void UpdateLocalPlayerAdaptiveAimAssist()
         {
             if(!EnableAdaptiveAimAssit) return;
             if(_recentThrowsHitsFillCount > 2)// Wait for 3 throws to start adapting
@@ -189,10 +194,10 @@ namespace Thry.BeerPong{
                 if(i != playerIndex)
                 {
                     totalSkill += players[i].GetSkill();
-                    totalCupsOthers += players[i].cups.existing_glasses_count;
+                    totalCupsOthers += players[i].cups.Existing_glasses_count;
                 }
             }
-            float myCups = players[playerIndex].cups.existing_glasses_count;
+            float myCups = players[playerIndex].cups.Existing_glasses_count;
             float avgCups = totalCupsOthers / (skilledPlayerCount-1);
             
             float valueSkill = totalSkill / (skilledPlayerCount-1);
@@ -205,16 +210,16 @@ namespace Thry.BeerPong{
         public Vector3 GetAITnitalTarget(int playerIndex)
         {
             Vector3 target = Vector3.zero;
-            if (gamemode == GM_BIG_PONG)
+            if (Gamemode == GM_BIG_PONG)
             {
                 ThryBP_CupsSpawn cupSpawn = players[0].cups;
-                target = kingOfTheHillParent.position + kingOfTheHillParent.up * cupSpawn.GetHeight();
-                Debug.DrawLine(kingOfTheHillParent.position, target, Color.blue, 5);
+                target = KingOfTheHillParent.position + KingOfTheHillParent.up * cupSpawn.GetGlobalHeight();
+                Debug.DrawLine(KingOfTheHillParent.position, target, Color.blue, 5);
             }
-            else if(gamemode == GM_KING_HILL)
+            else if(Gamemode == GM_KING_HILL)
             {
                 ThryBP_CupsSpawn cupSpawn = players[0].cups;
-                target = kingOfTheHillParent.position + kingOfTheHillParent.up * cupSpawn.GetHeight() * 4;
+                target = KingOfTheHillParent.position + KingOfTheHillParent.up * cupSpawn.GetGlobalHeight() * 4;
             }
             else
             {
@@ -226,9 +231,9 @@ namespace Thry.BeerPong{
                 {
                     if (i != playerIndex && (!isTeams || !IsSameTeam(playerIndex, i)))
                     {
-                        if (players[i].cups.existing_glasses_count > mostCups)
+                        if (players[i].cups.Existing_glasses_count > mostCups)
                         {
-                            mostCups = players[i].cups.existing_glasses_count;
+                            mostCups = players[i].cups.Existing_glasses_count;
                             mostCupsIndex = i;
                         }
                     }
@@ -245,11 +250,11 @@ namespace Thry.BeerPong{
         {
             Vector3 target = GetAITnitalTarget(playerIndex); // get rough target
             Debug.DrawLine(ballPos, target, Color.red, 5);
-            if(gamemode == GM_BIG_PONG)
+            if(Gamemode == GM_BIG_PONG)
             {
                 return ((target - ballPos).normalized + Vector3.up * 2.0f).normalized;
             }
-            else if(gamemode == GM_KING_HILL)
+            else if(Gamemode == GM_KING_HILL)
             {
                 return ((target - ballPos).normalized + Vector3.up * 1.0f).normalized * 0.7f * transform.lossyScale.x;
             }
@@ -259,23 +264,23 @@ namespace Thry.BeerPong{
             }
         }
 
-        public void RemoveCup(int cupOwner, int row, int collum, int scoreingPlayer)
+        public void RemoveCup(ThryBP_Glass cup, int scoreingPlayer)
         {
-            if (cupOwner < players.Length)
+            if (cup.PlayerAnchorSide != null)
             {
-                if (gamemode != GM_BIG_PONG)
+                if (Gamemode != GM_BIG_PONG)
                 {
-                    players[cupOwner].RemoveCup(row, collum);
+                    cup.PlayerAnchorSide.RemoveCup(cup.Row, cup.Column);
                 }
             }
         }
 
         bool IsSameTeam(int player1, int player2)
         {
-            return player1 % teamSize == player2 % teamSize;
+            return player1 % _teamSize == player2 % _teamSize;
         }
 
-        public void CountCupHit(int cupOwner, int row, int collum, int scoreingPlayer, int scoreType)
+        public void CountCupHit(int cupOwner, int scoreingPlayer, int scoreType)
         {
             if(!players[scoreingPlayer]._isAI)
             {
@@ -291,7 +296,7 @@ namespace Thry.BeerPong{
                     int add = AddToScore(scoreingPlayer, cupOwner, scoreType);
                     if (add != 0)
                     {
-                        for (int i = scoreingPlayer % teamSize; i < players.Length; i = i + teamSize)
+                        for (int i = scoreingPlayer % _teamSize; i < players.Length; i = i + _teamSize)
                         {
                             players[i].AddToScore(add);
                         }
@@ -320,13 +325,27 @@ namespace Thry.BeerPong{
             players[playerIndex].AddThrow();
         }
 
-        public bool AllowCollision(int ballOwner, ThryBP_Player cupOwner)
+        public bool AllowCollision(int ballOwner, ThryBP_Player cupOwner, ThryBP_Player cupSide)
         {
-            if (cupOwner != players[cupOwner.playerIndex]) return false; // Ball is from other table
-            if (gamemode == GM_KING_HILL) return true;
-            if (gamemode == GM_BIG_PONG) return true;
-            if (ballOwner == cupOwner.playerIndex) return canHitOwnCups;
-            if (toggleTeams.local_bool && ballOwner % teamSize == cupOwner.playerIndex % teamSize) return friendlyFire;
+            if (cupOwner != players[cupOwner.PlayerIndex]) return false; // Ball is from other table
+            if (Gamemode == GM_KING_HILL) return true;
+            if (Gamemode == GM_BIG_PONG) return true;
+            if (Gamemode == GM_MAYHEM) return ballOwner != cupSide.PlayerIndex;  // chedck if is on own side
+            if (ballOwner == cupOwner.PlayerIndex) return AllowSelfFire;
+            if (toggleTeams.local_bool && ballOwner % _teamSize == cupOwner.PlayerIndex % _teamSize) return AllowFriendlyFire;
+            return true;
+        }
+
+        public bool ShouldAimAssistAimForOwnCups()
+        {
+            if (Gamemode == GM_KING_HILL) return true;
+            if (Gamemode == GM_BIG_PONG) return true;
+            return false;
+        }
+
+        public bool ShouldAimAssistAimAtOwnSide()
+        {
+            if (Gamemode == GM_MAYHEM) return false;
             return true;
         }
 
@@ -334,10 +353,10 @@ namespace Thry.BeerPong{
         //           1: rimming
         private int AddToScore(int ballOwner, int cupOwner, int scoreType)
         {
-            if (gamemode == GM_KING_HILL) return 2 - scoreType;
-            if (gamemode == GM_BIG_PONG) return 2 - scoreType;
-            if (ballOwner == cupOwner) return 0;
-            if (toggleTeams.local_bool && ballOwner % teamSize == cupOwner % teamSize) return -3;
+            if (Gamemode == GM_KING_HILL) return 2 - scoreType;
+            if (Gamemode == GM_BIG_PONG) return 2 - scoreType;
+            if (ballOwner == cupOwner) return -1;
+            if (toggleTeams.local_bool && ballOwner % _teamSize == cupOwner % _teamSize) return -3;
             return 1 + scoreType;
         }
 
@@ -360,7 +379,7 @@ namespace Thry.BeerPong{
 
         public void SetActivePlayerColor(Color col)
         {
-            if (gamemode == GM_KING_HILL) return;
+            if (Gamemode == GM_KING_HILL || Gamemode == GM_MAYHEM) return;
 
             teamIndicatorMaterial.color = col;
             teamIndicatorMaterial.SetColor("_EmissionColor", col);
@@ -371,19 +390,19 @@ namespace Thry.BeerPong{
             int t = 0;
             for (int i = 0; i < players.Length && i < (int)playerCountSlider.local_float; i++)
             {
-                if (players[i].cups.existing_glasses_count > 0) t++;
+                if (players[i].cups.Existing_glasses_count > 0) t++;
             }
             return t;
         }
 
         public int GetNextPlayer(int c)
         {
-            if (gamemode == GM_KING_HILL) return c;
+            if (Gamemode == GM_KING_HILL || Gamemode == GM_MAYHEM) return c;
 
             c = (c + 1) % (int)playerCountSlider.local_float;
             if (PlayersWithCupsLeft() > 1)
             {
-                while (players[c].cups.existing_glasses_count == 0)
+                while (players[c].cups.Existing_glasses_count == 0)
                 {
                     c = (c + 1) % (int)playerCountSlider.local_float;
                 }
@@ -395,17 +414,17 @@ namespace Thry.BeerPong{
         {
             if (toggleTeams.local_bool)
             {
-                teamSize = 2;
-                for (int i = teamSize; i < players.Length; i++)
+                _teamSize = 2;
+                for (int i = _teamSize; i < players.Length; i++)
                 {
-                    int teamIndex = i % teamSize;
+                    int teamIndex = i % _teamSize;
                     players[i].SetColor(players[teamIndex].playerColor);
                 }
             }
             else
             {
-                teamSize = 1;
-                for (int i = teamSize; i < players.Length; i++)
+                _teamSize = 1;
+                for (int i = _teamSize; i < players.Length; i++)
                 {
                     players[i].SetColor(players[i].ogColor);
                 }
@@ -414,7 +433,7 @@ namespace Thry.BeerPong{
 
         public void ChangeBarrier()
         {
-            SetDividersActive(toggleBarrier.local_bool && gamemode == GM_NORMAL);
+            SetDividersActive(toggleBarrier.local_bool && Gamemode != GM_KING_HILL && Gamemode != GM_BIG_PONG);
         }
 
         void SetDividersActive(bool active)
@@ -424,24 +443,8 @@ namespace Thry.BeerPong{
 
         public void ChangeGameMode()
         {
-            gamemode = (int)gamemodeSelection.local_float;
-            if(gamemode == GM_NORMAL)
-            {
-                SetDividersActive(toggleBarrier.local_bool);
-
-                for (int i = 0; i < players.Length; i++)
-                {
-                    players[i].SetRandomColor(false);
-
-                    //players[i].cups.transform.parent = players[i].cups.anchorGamemodeNormal;
-                    //players[i].cups.transform.localPosition = Vector3.zero;
-                    //players[i].cups.transform.localRotation = Quaternion.identity;
-                    players[i].cups.overwriteShape = -1;
-
-                    players[i].cups.overwriteRows = i < playerCountSlider.local_float ? -1 : 0;
-                    players[i].cups.ResetGlassesIfOwner(1, 0, Vector3.zero);
-                }
-            }else if(gamemode == GM_KING_HILL)
+            Gamemode = (int)gamemodeSelection.local_float;
+            if(Gamemode == GM_KING_HILL)
             {
                 SetDividersActive(false);
 
@@ -451,44 +454,64 @@ namespace Thry.BeerPong{
                     players[i].SetRandomColor(true);
 
                     int rows = 10 - i * 2;
-                    Vector3 zOffsetPerCup = Vector3.back * players[i].cups.GetUnscaledLength();
-                    //players[i].cups.transform.parent = kingOfTheHillParent;
-                    //players[i].cups.transform.localPosition = Vector3.up * height + zOffsetPerCup * (rows / 2.0f);
-                    //players[i].cups.transform.localRotation = Quaternion.identity;
-                    players[i].cups.overwriteShape = 2;
-                    players[i].cups.overwriteRows = rows;
+                    Vector3 zOffsetPerCup = Vector3.back * players[i].cups.GetUnscaledLocalLength();
+                    players[i].cups.OverwriteShape = 2;
+                    players[i].cups.OverwriteRows = rows;
 
-                    players[i].cups.ResetGlassesIfOwner(1, 1, Vector3.up * height + zOffsetPerCup * (rows / 2.0f));
+                    players[i].cups.ResetCupsIfOwner(1, 1, Vector3.up * height + zOffsetPerCup * (rows / 2.0f));
 
-                    height += players[i].cups.GetHeight();
+                    height += players[i].cups.GetLocalHeight();
                 }
-            }else if(gamemode == GM_BIG_PONG)
+            }else if(Gamemode == GM_BIG_PONG)
             {
                 SetDividersActive(false);
                 for (int i = 1; i < players.Length; i++)
                 {
-                    players[i].cups.overwriteRows = 0;
-                    players[i].cups.ResetGlassesIfOwner(1, 0, Vector3.zero);
+                    players[i].cups.OverwriteRows = 0;
+                    players[i].cups.ResetCupsIfOwner(1, 0, Vector3.zero);
                 }
-                //players[0].cups.transform.parent = kingOfTheHillParent;
-                //players[0].cups.transform.localPosition = Vector3.zero;
-                //players[0].cups.transform.localRotation = Quaternion.identity;
-                players[0].cups.overwriteRows = 1;
-                players[0].cups.ResetGlassesIfOwner(10, 2, Vector3.zero);
+                players[0].cups.OverwriteRows = 1;
+                players[0].cups.ResetCupsIfOwner(10, 2, Vector3.zero);
+            }else if(Gamemode == GM_MAYHEM)
+            {
+                for (int i = 0; i < players.Length; i++)
+                {
+                    players[i].SetRandomColor(false);
+                    players[i].cups.OverwriteShape = -1;
+                    players[i].cups.OverwriteRows = i < playerCountSlider.local_float ? -1 : 0;
+                    players[i].cups.RowsSlider.value = 6;
+                    if(Networking.IsOwner(players[i].cups.gameObject))
+                    {
+                        players[i].cups.ShapeSelector.SetFloat(ThryBP_CupsSpawn.SHAPE_SQUARE);
+                    }
+                    players[i].cups.ResetCupsIfOwner(1, 0, Vector3.zero);
+                }
+            }else
+            {
+                SetDividersActive(toggleBarrier.local_bool);
+
+                for (int i = 0; i < players.Length; i++)
+                {
+                    players[i].SetRandomColor(false);
+                    players[i].cups.OverwriteShape = -1;
+
+                    players[i].cups.OverwriteRows = i < playerCountSlider.local_float ? -1 : 0;
+                    players[i].cups.ResetCupsIfOwner(1, 0, Vector3.zero);
+                }
             }
             ResetBalls();
         }
 
         void ResetBalls()
         {
-            if(gamemode == GM_NORMAL || gamemode == GM_BIG_PONG)
+            if(Gamemode == GM_NORMAL || Gamemode == GM_BIG_PONG)
             {
                 for (int i = 1; i < balls.Length; i++)
                     balls[i].gameObject.SetActive(false);
                 balls[0].gameObject.SetActive(true);
                 balls[0]._SetColor();
                 if (Networking.LocalPlayer.isMaster) balls[0].Respawn();
-            }else if(gamemode == GM_KING_HILL)
+            }else if(Gamemode == GM_KING_HILL || Gamemode == GM_MAYHEM)
             {
                 for (int i = 0; i < balls.Length; i++)
                 {
@@ -577,10 +600,10 @@ namespace Thry.BeerPong{
                         }
                     }
                     //Setup cups
-                    if(gamemode == GM_NORMAL && i < playerCountSlider.local_float && players[i].cups.existing_glasses_count == 0)
+                    if((Gamemode == GM_NORMAL || Gamemode == GM_MAYHEM) && i < playerCountSlider.local_float && players[i].cups.Existing_glasses_count == 0)
                     {
-                        players[i].cups.overwriteRows = -1;
-                        players[i].cups.ResetGlassesIfOwner(1, 0, Vector3.zero);
+                        players[i].cups.OverwriteRows = -1;
+                        players[i].cups.ResetCupsIfOwner(1, 0, Vector3.zero);
                     }
                 }
                 ResetBalls();

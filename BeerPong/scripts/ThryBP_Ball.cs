@@ -83,7 +83,7 @@ namespace Thry.BeerPong
         [HideInInspector]
         public Transform respawnHeight;
         [HideInInspector]
-        public ThryBP_Main _mainScript;
+        public ThryBP_Main MainScript;
 
         //Velocity tacking
         Vector3 _lastPosition;
@@ -123,7 +123,7 @@ namespace Thry.BeerPong
             }
             GetComponent<Collider>().enabled = true;
 
-            tableHeight = _mainScript.tableHeight.position.y;
+            tableHeight = MainScript.tableHeight.position.y;
         }
 
         private void PlayAudio(AudioClip clip, float strength)
@@ -169,7 +169,7 @@ namespace Thry.BeerPong
                 rimming = state[4] * 2;
             }else if(state[0] == STATE_IN_CUP)
             {
-                ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
+                ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
                 if (Utilities.IsValid(cup))
                 {
                     cup.colliderForThrow.enabled = false;
@@ -295,16 +295,16 @@ namespace Thry.BeerPong
         {
             if (rimming < RIMMING_TOTAL_AGULAR_ROTATION)
             {
-                ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
+                ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
                 if (Utilities.IsValid(cup))
                 {
                     rimming += RIMMING_SPEED * Time.deltaTime;
 
                     float inside = 0.9f - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.15f;
                     float downwards = 1 - rimming / RIMMING_TOTAL_AGULAR_ROTATION * 0.3f;
-                    float angle = (rimming - Mathf.Pow(rimming * 0.009f, 2)) / cup.Circumfrence * 0.4f;
-                    transform.position = cup.transform.position + Vector3.up * (cup.Height * downwards)
-                        + Quaternion.Euler(0, angle, 0) * Vector3.forward * (cup.Radius * cup.transform.lossyScale.x * inside - _radius);
+                    float angle = (rimming - Mathf.Pow(rimming * 0.009f, 2)) / cup.GlobalCircumfrence * 0.4f;
+                    transform.position = cup.transform.position + Vector3.up * (cup.GlobalHeight * downwards)
+                        + Quaternion.Euler(0, angle, 0) * Vector3.forward * (cup.GlobalRadius * cup.transform.lossyScale.x * inside - _radius);
                 }
                 else
                 {
@@ -313,7 +313,7 @@ namespace Thry.BeerPong
             }
             else
             {
-                ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
+                ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
                 if (Utilities.IsValid(cup))
                 {
                     cup.colliderInside.SetActive(true);
@@ -336,7 +336,7 @@ namespace Thry.BeerPong
 
         void DoInCup()
         {
-            ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
+            ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
             if (Utilities.IsValid(cup))
             {
 
@@ -355,29 +355,29 @@ namespace Thry.BeerPong
                 }
                 else if (Networking.IsOwner(gameObject))
                 {
-                    if (_mainScript.gamemode == 0)
+                    if (MainScript.Gamemode == ThryBP_Main.GM_NORMAL)
                     {
                         if (Time.time - stateStartTime > (autoRespawnBallAfterCupHit ? 2 : 20))
                         {
-                            _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
-                            _mainScript.RemoveCup(state[1], state[2], state[3], currentPlayer);
+                            MainScript.CountCupHit(cup.PlayerCupOwner.PlayerIndex, currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
+                            MainScript.RemoveCup(cup, currentPlayer);
                             Respawn();
                         }
                     }
-                    else if (_mainScript.gamemode == 1)
+                    else if (MainScript.Gamemode == ThryBP_Main.GM_KING_HILL || MainScript.Gamemode == ThryBP_Main.GM_MAYHEM)
                     {
                         if (Time.time - stateStartTime > 1)
                         {
-                            _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
-                            _mainScript.RemoveCup(state[1], state[2], state[3], currentPlayer);
+                            MainScript.CountCupHit(cup.PlayerCupOwner.PlayerIndex, currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
+                            MainScript.RemoveCup(cup, currentPlayer);
                             Respawn();
                         }
                     }
-                    else if (_mainScript.gamemode == 2)
+                    else if (MainScript.Gamemode == ThryBP_Main.GM_BIG_PONG)
                     {
                         if (Time.time - stateStartTime > 3)
                         {
-                            _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
+                            MainScript.CountCupHit(cup.PlayerCupOwner.PlayerIndex, currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
                             Respawn();
                         }
                     }
@@ -412,8 +412,9 @@ namespace Thry.BeerPong
 
             if (localState == STATE_IN_CUP)
             {
-                _mainScript.CountCupHit(state[1], state[2], state[3], currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
-                _mainScript.RemoveCup(state[1], state[2], state[3], currentPlayer);
+                ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
+                MainScript.CountCupHit(cup.PlayerCupOwner.PlayerIndex, currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
+                MainScript.RemoveCup(cup, currentPlayer);
                 NextTeam();
             }
         }
@@ -580,22 +581,23 @@ namespace Thry.BeerPong
             //Aim assist
             bool doFull = _isDev && (_special >= 3 || (Networking.LocalPlayer.IsUserInVR() && Input.GetAxis("Oculus_CrossPlatform_PrimaryIndexTrigger") > 0.9f));
             _special = 0;
-            if (_mainScript.aimAssist > 0 || doFull)
+            if (MainScript.AimAssist > 0 || doFull)
             {
-                start_velocity = DoAimbotVectoring(start_velocity, transform.position, doFull?1000:_mainScript.aimAssist);
+                start_velocity = DoAimAssistVectoring(start_velocity, transform.position, doFull?1000:MainScript.AimAssist);
                 startVelocityLocal = start_velocity;
             }
+            MainScript.LastAimAssistPublsher.SetFloat(MainScript.AimAssist);
 
             SetState(STATE_FYING);
             RequestSerialization();
 
-            _mainScript.CountThrow(currentPlayer);
+            MainScript.CountThrow(currentPlayer);
         }
 
         public void ShootAI(float skill)
         {
             // calculate rough velocity to throw ball in that direction
-            start_velocity = _mainScript.GetAIThrowVector(transform.position, currentPlayer) * MAX_THROW_STRENGTH * throwVelocityMultiplierDekstop;
+            start_velocity = MainScript.GetAIThrowVector(transform.position, currentPlayer) * MAX_THROW_STRENGTH * throwVelocityMultiplierDekstop;
 
             start_position = transform.position;
             start_rotation = transform.rotation;
@@ -655,14 +657,14 @@ namespace Thry.BeerPong
             return startVelocity;
         }
 
-        private Vector3 DoAimbotVectoring(Vector3 velocity, Vector3 position, float strength)
+        private Vector3 DoAimAssistVectoring(Vector3 velocity, Vector3 position, float strength)
         {
             if (strength == 0) return velocity;
             //Get Point where ball will hit table
             Vector3 predictionTableHit = PredictTableHit(velocity, position, tableHeight);
             ThryBP_Glass cup = GetClosestGlassToPredictedTableCollision(predictionTableHit);
             if (cup == null) return velocity;
-            Vector3 cupOpening = cup.transform.position + Vector3.up * (cup.Height + _radius);
+            Vector3 cupOpening = cup.transform.position + Vector3.up * (cup.GlobalHeight + _radius);
             Vector3 hitOnCupPlane = PredictTableHit(velocity, position, cupOpening.y);
             if (Vector3.Distance(cupOpening, hitOnCupPlane) > strength)
             {
@@ -693,7 +695,7 @@ namespace Thry.BeerPong
 
         private Vector3 OptimalVectorChangeStrength(Vector3 velocity, Vector3 position, ThryBP_Glass cup)
         {
-            Vector3 cupOpening = cup.transform.position + Vector3.up * (cup.Height + _radius);
+            Vector3 cupOpening = cup.transform.position + Vector3.up * (cup.GlobalHeight + _radius);
             // Debug.DrawLine(position, cupOpening, Color.red, 10);
             Vector3 horizonzalVector = cupOpening - position;
             horizonzalVector.y = 0;
@@ -746,7 +748,7 @@ namespace Thry.BeerPong
             float g = -Physics.gravity.y;
             float v2 = velocity.sqrMagnitude;
             float x = horizonzalDistance.magnitude;
-            float h = position.y - (tableHeight + aimedCup.Height);
+            float h = position.y - (tableHeight + aimedCup.GlobalHeight);
             float phi = Mathf.Atan(x / h);
             float theta = (Mathf.Acos(((g * x * x / v2) - h) / Mathf.Sqrt(h * h + x * x)) + phi) / 2;
 
@@ -768,13 +770,16 @@ namespace Thry.BeerPong
             //Get Cup closest to that point
             ThryBP_Glass aimedCup = null;
             float closestDistance = float.MaxValue;
-            for (int p = 0; p < _mainScript.playerCountSlider.local_float; p++)
+            bool disallowOwnCups = MainScript.ShouldAimAssistAimForOwnCups() == false;
+            bool disallowOwnSide = MainScript.ShouldAimAssistAimAtOwnSide() == false;
+            for (int p = 0; p < MainScript.playerCountSlider.local_float; p++)
             {
                 float d = 0;
-                foreach (ThryBP_Glass cup in _mainScript.players[p].cups.activeGlassesGameObjects)
+                foreach (ThryBP_Glass cup in MainScript.players[p].cups.ActiveGlassesGameObjects)
                 {
                     if (cup == null) continue;
-                    if (cup.player.playerIndex == currentPlayer) continue;
+                    if (disallowOwnCups && cup.PlayerCupOwner.PlayerIndex == currentPlayer) continue;
+                    if (disallowOwnSide && cup.PlayerAnchorSide.PlayerIndex == currentPlayer) continue;
                     d = Vector3.Distance(cup.transform.position, prediction);
                     if (d < closestDistance)
                     {
@@ -838,7 +843,7 @@ namespace Thry.BeerPong
 
         private void ResetLastCupsColliders()
         {
-            ThryBP_Glass cup = _mainScript.GetCup(state[1], state[2], state[3]);
+            ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
             if (Utilities.IsValid(cup))
             {
                 cup.colliderForThrow.enabled = true;
@@ -848,7 +853,8 @@ namespace Thry.BeerPong
 
         public void Respawn()
         {
-            if(currentPlayer >= _mainScript.playerCountSlider.local_float)
+            if(Networking.IsOwner(gameObject)) MainScript.UpdateLocalPlayerAdaptiveAimAssist();
+            if(currentPlayer >= MainScript.playerCountSlider.local_float)
             {
                 currentPlayer = 0;
                 _SetColor();
@@ -857,27 +863,27 @@ namespace Thry.BeerPong
             _rigidbody.angularVelocity = Vector3.zero;
             SetStatic();
             SetState(STATE_IDLE);
-            transform.position = _mainScript.GetBallSpawn(currentPlayer).position;
-            transform.rotation = _mainScript.GetBallSpawn(currentPlayer).rotation;
+            transform.position = MainScript.GetBallSpawn(currentPlayer).position;
+            transform.rotation = MainScript.GetBallSpawn(currentPlayer).rotation;
             start_position = transform.position;
             start_rotation = transform.rotation;
             _pickup.pickupable = true;
-            _mainScript.players[currentPlayer].ItsYourTurn(this);
+            MainScript.players[currentPlayer].ItsYourTurn(this);
             ResetLastCupsColliders();
             RequestSerialization();
         }
 
         private void NextTeam()
         {
-            currentPlayer = _mainScript.GetNextPlayer(currentPlayer);
+            currentPlayer = MainScript.GetNextPlayer(currentPlayer);
             _SetColor();
             RequestSerialization();
         }
 
         public void _SetColor()
         {
-            _renderer.material.color = _mainScript.GetPlayerColor(currentPlayer);
-            _mainScript.SetActivePlayerColor(_renderer.material.color);
+            _renderer.material.color = MainScript.GetPlayerColor(currentPlayer);
+            MainScript.SetActivePlayerColor(_renderer.material.color);
         }
 
         const float COLLISION_MAXIMUM_DISTANCE_FROM_CENTER = 0.95f;
@@ -895,7 +901,7 @@ namespace Thry.BeerPong
                 p1.y = 0;
                 Vector3 p2 = hitGlass.transform.position;
                 p2.y = 0;
-                float distanceFromCenter = Vector3.Distance(p1, p2) / hitGlass.Radius;
+                float distanceFromCenter = Vector3.Distance(p1, p2) / hitGlass.GlobalRadius;
 
                 if (distanceFromCenter < COLLISION_MAXIMUM_DISTANCE_FROM_CENTER)
                 {
@@ -906,9 +912,9 @@ namespace Thry.BeerPong
                     if (tripOnEdge)
                     {
                         SetState(STATE_RIMING);
-                        state[1] = (byte)hitGlass.player.playerIndex;
-                        state[2] = (byte)hitGlass.row;
-                        state[3] = (byte)hitGlass.collum;
+                        state[1] = (byte)hitGlass.PlayerAnchorSide.PlayerIndex;
+                        state[2] = (byte)hitGlass.Row;
+                        state[3] = (byte)hitGlass.Column;
                         rimming = Vector3.Angle(hitGlass.transform.rotation * Vector3.forward, p2 - p1);
                         if ((p2 - p1).x > 0) rimming = 360-rimming;
                         rimming = rimming % 360;
@@ -921,9 +927,9 @@ namespace Thry.BeerPong
                         hitGlass.colliderInside.SetActive(true);
                         _pickup.pickupable = !autoRespawnBallAfterCupHit;
                         SetState(STATE_IN_CUP);
-                        state[1] = (byte)hitGlass.player.playerIndex;
-                        state[2] = (byte)hitGlass.row;
-                        state[3] = (byte)hitGlass.collum;
+                        state[1] = (byte)hitGlass.PlayerAnchorSide.PlayerIndex;
+                        state[2] = (byte)hitGlass.Row;
+                        state[3] = (byte)hitGlass.Column;
 
                         _TriggerSplash();
                         _rigidbody.velocity = Vector3.down * startVelocityLocal.magnitude;
@@ -959,7 +965,7 @@ namespace Thry.BeerPong
                     {
                         ThryBP_Glass hitGlass = collision.collider.gameObject.GetComponent<ThryBP_Glass>();
                         //check if collision with own glass and if friendly fire is turned on
-                        if (_mainScript.AllowCollision(currentPlayer, hitGlass.player))
+                        if (MainScript.AllowCollision(currentPlayer, hitGlass.PlayerCupOwner, hitGlass.PlayerAnchorSide))
                         {
                             BallGlassCollision(collision, hitGlass);
                         }
