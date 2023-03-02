@@ -661,19 +661,47 @@ namespace Thry.BeerPong
         {
             if (strength == 0) return velocity;
             //Get Point where ball will hit table
-            Vector3 predictionTableHit = PredictTableHit(velocity, position, tableHeight);
+            float predictedTableHitTime = PredictTableHitTime(velocity, position, tableHeight);
+            Vector3 predictionTableHit = GetTableHitPosition(velocity, position, tableHeight, predictedTableHitTime);
             ThryBP_Glass cup = GetClosestGlassToPredictedTableCollision(predictionTableHit);
             if (cup == null) return velocity;
             Vector3 cupOpening = cup.transform.position + Vector3.up * (cup.GlobalHeight + _radius);
             Vector3 hitOnCupPlane = PredictTableHit(velocity, position, cupOpening.y);
+            // If hit not in range, check if ball will bounce close to cup
             if (Vector3.Distance(cupOpening, hitOnCupPlane) > strength)
             {
-                //Check if ball close to going past, if adjust angle for bounce aim assist
+                // Calculate the position of the first bounce
+                Vector3 reflectVel = Vector3.Reflect(VelocityAtTime(velocity, predictedTableHitTime), Vector3.up) * BOUND_DRAG;
+                float predictedCupHeightTime2 = PredictTableHitTime(reflectVel, predictionTableHit, cupOpening.y);
+                Vector3 predictionCupHeightPosition2 = GetTableHitPosition(reflectVel, predictionTableHit, cupOpening.y, predictedCupHeightTime2);
+                // Get new closest cup
+                cup = GetClosestGlassToPredictedTableCollision(predictionCupHeightPosition2);
+                cupOpening = cup.transform.position + Vector3.up * (cup.GlobalHeight + _radius);
+                // If first bounce is close to cup, aim for that
+                if (Vector3.Distance(cupOpening, predictionCupHeightPosition2) < strength)
+                {
+                    Vector3 correctDirection = OptimalVectorJustChangeY(velocity, position, cup);
+                    // Adjust xz velocity to hit cup
+                    float xzThrowDistance = XZDistance(position, predictionCupHeightPosition2);
+                    float targetXZDistance = XZDistance(position, cupOpening);
+                    float multiplier = targetXZDistance / xzThrowDistance;
+                    correctDirection.x *= multiplier;
+                    correctDirection.z *= multiplier;
+                    return correctDirection;
+                }
+                //Check if ball close to going past, if so adjust angle for bounce aim assist
                 float distance = Vector3.Cross(new Vector3(velocity.x,0, velocity.z).normalized, new Vector3(cupOpening.x,0,cupOpening.z) - new Vector3(position.x, 0, position.z)).magnitude;
                 if (distance < strength) return OptimalVectorJustChangeY(velocity, position, cup);
                 return velocity;
             }
             return OptimalVectorChangeStrength(velocity, position, cup);
+        }
+
+        private float XZDistance(Vector3 a, Vector3 b)
+        {
+            a.y = 0;
+            b.y = 0;
+            return Vector3.Distance(a, b);
         }
 
         private Vector3 DoAIVectoring(Vector3 velocity, Vector3 position, float skill)
@@ -775,8 +803,11 @@ namespace Thry.BeerPong
             for (int p = 0; p < MainScript.playerCountSlider.local_float; p++)
             {
                 float d = 0;
-                foreach (ThryBP_Glass cup in MainScript.players[p].cups.ActiveGlassesGameObjects)
+                int length = MainScript.players[p].cups.ActiveCupsCount;
+                ThryBP_Glass[] cups = MainScript.players[p].cups.ActiveCupsList;
+                for(int i = 0; i < length; i++)
                 {
+                    ThryBP_Glass cup = cups[i];
                     if (cup == null) continue;
                     if (disallowOwnCups && cup.PlayerCupOwner.PlayerIndex == currentPlayer) continue;
                     if (disallowOwnSide && cup.PlayerAnchorSide.PlayerIndex == currentPlayer) continue;
@@ -793,6 +824,17 @@ namespace Thry.BeerPong
 
         private Vector3 PredictTableHit(Vector3 orignVelocity, Vector3 orignPosition, float tableHeight)
         {
+            float t = PredictTableHitTime(orignVelocity, orignPosition, tableHeight);
+            return GetTableHitPosition(orignVelocity, orignPosition, tableHeight, t);
+        }
+
+        private Vector3 GetTableHitPosition(Vector3 orignVelocity, Vector3 orignPosition, float tableHeight, float t)
+        {
+            return new Vector3(orignPosition.x + orignVelocity.x * t, tableHeight + _radius, orignPosition.z + orignVelocity.z * t);
+        }
+
+        private float PredictTableHitTime(Vector3 orignVelocity, Vector3 orignPosition, float tableHeight)
+        {
             // Solve quadratic equation: c0*x^2 + c1*x + c2. 
             float c0 = Physics.gravity.y / 2;
             float c1 = orignVelocity.y;
@@ -803,11 +845,7 @@ namespace Thry.BeerPong
             if (quadratic == 1) t = quadraticOut[0];
             else if(quadratic == 2 && quadraticOut[0] > 0 && quadraticOut[0] > quadraticOut[1]) t = quadraticOut[0];
             else if(quadratic == 2 && quadraticOut[1] > 0) t = quadraticOut[1];
-            //Debug.Log("Velocity: " + velocity + ", position: " + position + ", tableHeight: " + tableHeight);
-            //Debug.Log(c0 + "x^2 + " + c1 + "x + " + c2);
-            //Debug.Log(quadratic + "," + quadraticOut[0] + "," + quadraticOut[1]);
-            //Debug.Log("Prediction hit on table: " + prediction + " at time: " + (Time.time + t));
-            return new Vector3(orignPosition.x + orignVelocity.x * t, tableHeight + _radius, orignPosition.z + orignVelocity.z * t);
+            return t;
         }
 
         public int SolveQuadric(float c0, float c1, float c2, float[] s)

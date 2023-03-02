@@ -19,7 +19,11 @@ namespace Thry.BeerPong
         byte[] _cupOwnersAtPositions = new byte[0];
 
         [HideInInspector]
-        public ThryBP_Glass[] ActiveGlassesGameObjects;
+        public ThryBP_Glass[] ActiveCupsGameObjects;
+        [HideInInspector]
+        public ThryBP_Glass[] ActiveCupsList;
+        [HideInInspector]
+        public int ActiveCupsCount = 0;
 
         [UdonSynced]
         public float Scale = 1;
@@ -81,7 +85,8 @@ namespace Thry.BeerPong
 
             X_PER_ROW = MAX_ROWS + MAX_ROWS;
             _cupOwnersAtPositions = new byte[MAX_ROWS * X_PER_ROW];
-            ActiveGlassesGameObjects = new ThryBP_Glass[MAX_ROWS * X_PER_ROW];
+            ActiveCupsGameObjects = new ThryBP_Glass[MAX_ROWS * X_PER_ROW];
+            ActiveCupsList = new ThryBP_Glass[MAX_ROWS * X_PER_ROW];
             // fill _glassOwnersAtPositions with PLAYER_VALUE_NONE
             for (int i = 0; i < _cupOwnersAtPositions.Length; i++)
             {
@@ -106,7 +111,7 @@ namespace Thry.BeerPong
 
         public ThryBP_Glass GetCup(int r, int c)
         {
-            return ActiveGlassesGameObjects[r * X_PER_ROW + c];
+            return ActiveCupsGameObjects[r * X_PER_ROW + c];
         }
 
         public void RemoveCup(int row, int collum)
@@ -405,16 +410,18 @@ namespace Thry.BeerPong
             }
             if (_cupOwnersAtPositions[index] != PLAYER_VALUE_NONE)
             {
-                if (Utilities.IsValid(ActiveGlassesGameObjects[index]))
+                if (Utilities.IsValid(ActiveCupsGameObjects[index]))
                 {
                     // Cup is Incorrect
-                    if( ActiveGlassesGameObjects[index].PlayerCupOwner.PlayerIndex != _cupOwnersAtPositions[index]
-                        || ActiveGlassesGameObjects[index].transform.localScale.x != Scale 
-                        || ActiveGlassesGameObjects[index].Anchor_id != Anchor_id
-                        || ActiveGlassesGameObjects[index].Position_offset != Position_offset)
+                    if( ActiveCupsGameObjects[index].PlayerCupOwner.PlayerIndex != _cupOwnersAtPositions[index]
+                        || ActiveCupsGameObjects[index].transform.localScale.x != Scale 
+                        || ActiveCupsGameObjects[index].Anchor_id != Anchor_id
+                        || ActiveCupsGameObjects[index].Position_offset != Position_offset)
                     {
-                        Destroy(ActiveGlassesGameObjects[index].gameObject);
+                        int indexList = Array.IndexOf(ActiveCupsList, ActiveCupsGameObjects[index]);
+                        Destroy(ActiveCupsGameObjects[index].gameObject);
                         InstanciateCup(syncR, syncC, index, _cupOwnersAtPositions[index]);
+                        ActiveCupsList[indexList] = ActiveCupsGameObjects[index];
                     }
                 }
                 else
@@ -424,9 +431,9 @@ namespace Thry.BeerPong
             }
             else
             {
-                if (Utilities.IsValid(ActiveGlassesGameObjects[index]))
+                if (Utilities.IsValid(ActiveCupsGameObjects[index]))
                 {
-                    Destroy(ActiveGlassesGameObjects[index].gameObject);
+                    DestroyCup(ActiveCupsGameObjects[index]);
                 }
             }
             syncC++;
@@ -442,9 +449,9 @@ namespace Thry.BeerPong
                 for (int c = 0; c < X_PER_ROW; c++)
                 {
                     int index = r * X_PER_ROW + c;
-                    if (Utilities.IsValid(ActiveGlassesGameObjects[index]))
+                    if (Utilities.IsValid(ActiveCupsGameObjects[index]))
                     {
-                        Destroy(ActiveGlassesGameObjects[index].gameObject);
+                        DestroyCup(ActiveCupsGameObjects[index]);
                     }
                 }
             }
@@ -458,15 +465,23 @@ namespace Thry.BeerPong
                 for (int c = 0; c < X_PER_ROW; c++)
                 {
                     int index = r * X_PER_ROW + c;
-                    if (_cupOwnersAtPositions[index] != PLAYER_VALUE_NONE && Utilities.IsValid(ActiveGlassesGameObjects[index]))
+                    if (_cupOwnersAtPositions[index] != PLAYER_VALUE_NONE && Utilities.IsValid(ActiveCupsGameObjects[index]))
                     {
-                        ActiveGlassesGameObjects[index].UpdateColor(index);
+                        ActiveCupsGameObjects[index].UpdateColor(index);
                     }
                 }
             }
         }
 
         //Instanciating
+
+        public void DestroyCup(ThryBP_Glass cup)
+        {
+            // Remove from list
+            int index = Array.IndexOf(ActiveCupsList, cup);
+            ActiveCupsList[index] = ActiveCupsList[--ActiveCupsCount];
+            Destroy(cup.gameObject);
+        }
 
         public void InstanciateCup(int row, int collum, int index, int cupOwner)
         {
@@ -494,7 +509,8 @@ namespace Thry.BeerPong
             cup.LocalCircumfrence = Glass.LocalCircumfrence * Scale;
             cup.LocalHeight = Glass.LocalHeight * Scale;
             
-            ActiveGlassesGameObjects[index] = cup;
+            ActiveCupsGameObjects[index] = cup;
+            ActiveCupsList[ActiveCupsCount++] = cup;
 
             cup.UpdateColor(index);
         }
