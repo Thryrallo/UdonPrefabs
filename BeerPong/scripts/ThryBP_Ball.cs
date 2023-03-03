@@ -49,6 +49,7 @@ namespace Thry.BeerPong
         byte localState = 0;
         float stateStartTime = 0;
         float physicsSimulationStartTime = 0;
+        bool _countedHit;
 
         const byte STATE_IDLE = 0;
         const byte STATE_IN_HAND = 1;
@@ -79,7 +80,7 @@ namespace Thry.BeerPong
 
         //References set by main script
         [HideInInspector]
-        public bool autoRespawnBallAfterCupHit = true;
+        public bool AutoRespawnBallAfterCupHit = true;
         [HideInInspector]
         public Transform respawnHeight;
         [HideInInspector]
@@ -133,7 +134,7 @@ namespace Thry.BeerPong
 
         public override void OnDeserialization()
         {
-            _pickup.pickupable = state[0] == STATE_IDLE || (state[0] == STATE_IN_CUP && !autoRespawnBallAfterCupHit);
+            _pickup.pickupable = state[0] == STATE_IDLE || (state[0] == STATE_IN_CUP && !AutoRespawnBallAfterCupHit);
             _SetColor();
 
             if (state[0] == STATE_IDLE)
@@ -325,7 +326,7 @@ namespace Thry.BeerPong
                     localState = STATE_IN_CUP;
                     stateStartTime = Time.time;
                     _TriggerSplash();
-                    _pickup.pickupable = !autoRespawnBallAfterCupHit;
+                    _pickup.pickupable = !AutoRespawnBallAfterCupHit;
                 }
                 else
                 {
@@ -357,11 +358,23 @@ namespace Thry.BeerPong
                 {
                     if (MainScript.Gamemode == ThryBP_Main.GM_NORMAL)
                     {
-                        if (Time.time - stateStartTime > (autoRespawnBallAfterCupHit ? 2 : 20))
+                        if(!_countedHit)
                         {
+                            _countedHit = true;
                             MainScript.CountCupHit(cup.PlayerCupOwner.PlayerIndex, currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
-                            MainScript.RemoveCup(cup, currentPlayer);
-                            Respawn();
+                            if(!AutoRespawnBallAfterCupHit)
+                            {
+                                NextTeam();
+                                SendCustomEventDelayedSeconds(nameof(SendItsYourTurn), 2);
+                            } 
+                        }
+                        if (Time.time - stateStartTime > 2)
+                        {
+                            if(AutoRespawnBallAfterCupHit || Time.time - stateStartTime > 20)
+                            {
+                                MainScript.RemoveCup(cup, currentPlayer);
+                                Respawn();
+                            }
                         }
                     }
                     else if (MainScript.Gamemode == ThryBP_Main.GM_KING_HILL || MainScript.Gamemode == ThryBP_Main.GM_MAYHEM)
@@ -402,27 +415,49 @@ namespace Thry.BeerPong
             transform.rotation = rotation;
             start_position = position;
             start_rotation = rotation;
+            RequestSerialization();
         }
 
         //Set ownership
         public override void OnPickup()
         {
+            _countedHit = false;
             Networking.SetOwner(Networking.LocalPlayer, gameObject);
             SendCustomEventDelayedFrames(nameof(OnPickupDelayed), 1);
 
             if (localState == STATE_IN_CUP)
             {
+                _rigidbody.velocity = Vector3.zero;
+                _rigidbody.angularVelocity = Vector3.zero;
+                SetStatic();
+
                 ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
-                MainScript.CountCupHit(cup.PlayerCupOwner.PlayerIndex, currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
                 MainScript.RemoveCup(cup, currentPlayer);
-                NextTeam();
             }
+
+            SetState(STATE_IN_HAND);
+        }
+
+        public void OnPickupAI()
+        {
+            _countedHit = false;
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+
+            if (localState == STATE_IN_CUP)
+            {
+                _rigidbody.velocity = Vector3.zero;
+                _rigidbody.angularVelocity = Vector3.zero;
+                SetStatic();
+
+                ThryBP_Glass cup = MainScript.GetCup(state[1], state[2], state[3]);
+                MainScript.RemoveCup(cup, currentPlayer);
+            }
+            SetState(STATE_IDLE);
         }
 
         public void OnPickupDelayed()
         {
-            SetState(STATE_IN_HAND);
-            EnableAndMoveIndicator();
+            SerializePositionRelativeToHand();
         }
 
         private void SerializePositionRelativeToHand()
@@ -452,27 +487,6 @@ namespace Thry.BeerPong
             RequestSerialization();
         }
 
-        //Parent indicator
-        public void EnableAndMoveIndicator()
-        {
-            throwIndicator.SetParent(transform);
-            throwIndicator.localPosition = Vector3.zero;
-            throwIndicator.localRotation = Quaternion.identity;
-            RequestSerialization();
-
-            SerializePositionRelativeToHand();
-        }
-
-        public void LockIndicator()
-        {
-            throwIndicator.SetParent(null);
-            throwIndicator.SetPositionAndRotation(transform.position, transform.rotation);
-            SetState(STATE_LOCKED);
-            start_position = transform.position;
-            start_rotation = transform.rotation;
-            RequestSerialization();
-        }
-
 
         bool _isDev;
         int _special;
@@ -489,27 +503,6 @@ namespace Thry.BeerPong
                 _pickup.Drop();
             }
         }
-
-        /*public override void OnPickupUseDown()
-        {
-            throwIndicator.gameObject.SetActive(true);
-        }
-
-        public override void OnPickupUseUp()
-        {
-            _special++;
-            bool isLocked = throwIndicator.parent != transform;
-            if (isLocked)
-            {
-                SetState(STATE_IN_HAND);
-                EnableAndMoveIndicator();
-                throwIndicator.gameObject.SetActive(false);
-            }
-            else
-            {
-                LockIndicator();
-            }
-        }*/
 
         Vector3 dropVelocity;
         public override void OnDrop()
@@ -892,11 +885,6 @@ namespace Thry.BeerPong
         public void Respawn()
         {
             if(Networking.IsOwner(gameObject)) MainScript.UpdateLocalPlayerAdaptiveAimAssist();
-            if(currentPlayer >= MainScript.playerCountSlider.local_float)
-            {
-                currentPlayer = 0;
-                _SetColor();
-            }
             _rigidbody.velocity = Vector3.zero;
             _rigidbody.angularVelocity = Vector3.zero;
             SetStatic();
@@ -911,9 +899,18 @@ namespace Thry.BeerPong
             RequestSerialization();
         }
 
+        public void SendItsYourTurn()
+        {
+            MainScript.players[currentPlayer].ItsYourTurn(this);
+        }
+
         private void NextTeam()
         {
             currentPlayer = MainScript.GetNextPlayer(currentPlayer);
+            if(currentPlayer >= MainScript.playerCountSlider.local_float)
+            {
+                currentPlayer = 0;
+            }
             _SetColor();
             RequestSerialization();
         }
@@ -963,7 +960,7 @@ namespace Thry.BeerPong
                     {
                         hitGlass.colliderForThrow.enabled = false;
                         hitGlass.colliderInside.SetActive(true);
-                        _pickup.pickupable = !autoRespawnBallAfterCupHit;
+                        _pickup.pickupable = !AutoRespawnBallAfterCupHit;
                         SetState(STATE_IN_CUP);
                         state[1] = (byte)hitGlass.PlayerAnchorSide.PlayerIndex;
                         state[2] = (byte)hitGlass.Row;

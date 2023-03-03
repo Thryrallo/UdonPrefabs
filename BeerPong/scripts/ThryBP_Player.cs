@@ -135,8 +135,8 @@ namespace Thry.BeerPong
 
         public void AI_AIM()
         {
+            currentBall.OnPickupAI(); // For when AutoRespawnBallAfterCupHit is off & the ball is still in the cup state
             currentBall.SetPositionRotation(aiBallSpawn.position, aiBallSpawn.rotation);
-            currentBall.EnableAndMoveIndicator();
             SendCustomEventDelayedSeconds(nameof(AI_SHOOT), 1);
         }
 

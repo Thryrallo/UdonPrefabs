@@ -81,6 +81,7 @@ namespace Thry.General
         string[] udon_event_Names;
 
         //Action Animator driver
+        public Transform[] scaleTransforms;
         public Animator[] animators;
         public int[] animatorParameterTypes;
         public string[] animatorParameterNames;
@@ -477,6 +478,7 @@ namespace Thry.General
                     _local_float_transformed = local_float;
 
                 UpdateFloatAnimators();
+                UpdateFloatTransforms();
                 UpdateBoolToggles();
                 UpdateFloatAudioSources();
 
@@ -505,6 +507,14 @@ namespace Thry.General
                     if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Float) animators[i].SetFloat(animatorParameterNames[i], _local_float_transformed);
                     else if (animatorParameterTypes[i] == (int)UnityEngine.AnimatorControllerParameterType.Int) animators[i].SetInteger(animatorParameterNames[i], (int)_local_float_transformed);
                 }
+            }
+        }
+
+        private void UpdateFloatTransforms()
+        {
+            for(int i = 0; i < scaleTransforms.Length; i++)
+            {
+                scaleTransforms[i].localScale = Vector3.one * _local_float_transformed;
             }
         }
 
@@ -1068,10 +1078,11 @@ namespace Thry.General
                 action.animatorParameterTypes = arraysAnimator[1].intA;
                 action.animatorParameterNames = arraysAnimator[2].stringA;
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Audio Volume", EditorStyles.boldLabel);
-                action._audioVolume = (AudioSource[])ArraysGUI(new ArrayData("Audio Source", "", action._audioVolume, typeof(AudioSource)))[0].unityA;
-                EditorGUILayout.Space();
                 EditorGUILayout.LabelField("Others", EditorStyles.boldLabel);
+                ArrayGUI(nameof(action._audioVolume), "Audio Volume");
+                ArrayGUI(nameof(action.scaleTransforms), "Scale Transform");
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Special", EditorStyles.boldLabel);
                 action.gameobjectOwnerText = (Text)EditorGUILayout.ObjectField("Text with Owner Displayname",action.gameobjectOwnerText, typeof(Text), true);
                 action.takeCameraPicture = (Camera)EditorGUILayout.ObjectField("Take Picture",action.takeCameraPicture, typeof(Camera), true);
                 EditorGUILayout.Space();

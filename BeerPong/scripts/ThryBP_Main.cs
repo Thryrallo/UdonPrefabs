@@ -35,6 +35,7 @@ namespace Thry.BeerPong{
 
         public bool AllowSelfFire = false;
         public bool AllowFriendlyFire = true;
+        public bool DoAutoRespawnBalls = true;
 
         public ThryAction playerCountSlider;
         public ThryAction toggleTeams;
@@ -100,6 +101,7 @@ namespace Thry.BeerPong{
             {
                 b.respawnHeight = respawnHeight;
                 b.MainScript = this;
+                b.AutoRespawnBallAfterCupHit = DoAutoRespawnBalls;
                 b.Init();
             }
 
