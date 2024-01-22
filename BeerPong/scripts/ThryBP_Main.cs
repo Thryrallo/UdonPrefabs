@@ -101,7 +101,6 @@ namespace Thry.BeerPong{
             {
                 b.respawnHeight = respawnHeight;
                 b.MainScript = this;
-                b.AutoRespawnBallAfterCupHit = DoAutoRespawnBalls;
                 b.Init();
             }
 

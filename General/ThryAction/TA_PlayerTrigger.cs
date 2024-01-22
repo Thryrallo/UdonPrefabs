@@ -52,14 +52,21 @@ namespace Thry.General
         {
             EditorGUILayout.LabelField("<size=20><color=#f542da>Player Collider Adapter</color></size>", new GUIStyle(EditorStyles.label) { richText = true, alignment = TextAnchor.MiddleCenter }, GUILayout.Height(50));
 
-            serializedObject.Update();
             TA_PlayerTrigger action = (TA_PlayerTrigger)target;
             if (!ThryActionEditor.MakeSureItsAnUdonBehaviour(action)) return;
+
+            EditorGUI.BeginChangeCheck();
 
             action.action = (ThryAction)EditorGUILayout.ObjectField(new GUIContent("Thry Action"), action.action, typeof(ThryAction), true);
             action.onlyLocalPlayer = EditorGUILayout.Toggle("Only Local Player", action.onlyLocalPlayer);
             action.reactToTrigger = EditorGUILayout.Toggle("Fire on Trigger", action.reactToTrigger);
             action.reactToCollision = EditorGUILayout.Toggle("Fire on Collision", action.reactToCollision);
+
+            if(EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(target);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(action);
+            }
         }
     }
 #endif

@@ -203,6 +203,11 @@ namespace Thry.Udon.Calendar
                 for(int i = 0; i < birthdayLines.Length; i++)
                 {
                     string[] parts = birthdayLines[i].Split(';');
+                    if(parts.Length < 4)
+                    {
+                        Debug.LogError("[Thry][Calendar] Birthday entry " + i + " is invalid. Skipping.");
+                        continue;
+                    }
                     string name = parts[0]+"'s Birthday";
                     string month = parts[1];
                     string day = parts[2];

@@ -77,9 +77,10 @@ namespace Thry.General
         {
             EditorGUILayout.LabelField("<size=20><color=#f542da>Option Selector Adapter</color></size>", new GUIStyle(EditorStyles.label) { richText = true, alignment = TextAnchor.MiddleCenter }, GUILayout.Height(50));
 
-            serializedObject.Update();
             TA_OptionSelector action = (TA_OptionSelector)target;
             if (!ThryActionEditor.MakeSureItsAnUdonBehaviour(action)) return;
+
+            EditorGUI.BeginChangeCheck();
 
             action.action = (ThryAction)EditorGUILayout.ObjectField(new GUIContent("Thry Action"), action.action, typeof(ThryAction), true);
             action.selectedText = (Text)EditorGUILayout.ObjectField(new GUIContent("Selected Text"), action.selectedText, typeof(Text), true);
@@ -90,7 +91,11 @@ namespace Thry.General
 
             action._optionalAnimator = (Animator)EditorGUILayout.ObjectField(new GUIContent("Animator"), action._optionalAnimator, typeof(Animator), true);
 
-            serializedObject.ApplyModifiedProperties();
+            if(EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(target);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(action);
+            }
         }
 
         ReorderableList list;

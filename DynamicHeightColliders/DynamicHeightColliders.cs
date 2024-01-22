@@ -16,6 +16,7 @@ public class DynamicHeightColliders : UdonSharpBehaviour
     VRCPlayerApi _player;
     float playerHighestY = 0;
     float playerY;
+    int _raycastMask;
 
     Collider[] _colliders = new Collider[100];
     Collider[] _immobilizedBy = new Collider[100];
@@ -23,88 +24,23 @@ public class DynamicHeightColliders : UdonSharpBehaviour
     void Start()
     {
         _player = Networking.LocalPlayer;
-    }
-
-    private void OnTriggerEnter(Collider other) 
-    {
-        if(other == null) return;
-        if(other.isTrigger == false) OnColliderEnter(other);
+        _raycastMask = LayerMask.GetMask("Default", "Environment");
     }
 
     public override void OnPlayerRespawn(VRCPlayerApi player)
     {
-        int i = Array.IndexOf(_colliders, null);
-        while(i != -1)
+        // Reset all _colliders triggers
+        for(int j = 0; j < _colliders.Length; j++)
         {
-            _colliders[i].isTrigger = false;
-            _colliders[i] = null;
-            i = Array.IndexOf(_colliders, null);
+            if(_colliders[j] == null) continue;
+            _colliders[j].isTrigger = false;
         }
-        i = Array.IndexOf(_immobilizedBy, null);
-        while(i != -1)
-        {
-            _immobilizedBy[i] = null;
-            i = Array.IndexOf(_immobilizedBy, null);
-        }
+        // Clear _colliders
+        Array.Clear(_colliders, 0, _colliders.Length);
+        // Clear _immobilizedBy
+        Array.Clear(_immobilizedBy, 0, _immobilizedBy.Length);
         Mobilize();
     }
-
-    void OnColliderEnter(Collider other)
-    {
-        // should block player if lowest part of collider is below the players head
-        float colliderLowest = other.bounds.min.y;
-        if(colliderLowest > playerY + 2) return; // if collider is too far above player, ignore
-        if(playerHighestY < colliderLowest) // if player is below collider
-        {
-            other.isTrigger = true;
-            int free = Array.IndexOf(_colliders, null);
-            if(free != -1)
-            {
-                _colliders[free] = other;
-            }
-        }
-    }
-
-    private void OnTriggerStay(Collider other) 
-    {
-        if(other == null) return;
-        if(other.isTrigger)
-        {
-            // check if is currently dynamic
-            int index = Array.IndexOf(_colliders, other);
-            if(index != -1)
-            {
-                float colliderLowest = other.bounds.min.y;
-                Vector3 playerPosInsideCollider = transform.position;
-                playerPosInsideCollider.y = colliderLowest;
-                if(playerHighestY > colliderLowest && // if player collides -> immobilize
-                    other.ClosestPoint(playerPosInsideCollider) == playerPosInsideCollider ) // is player below collider
-                {
-                    ColliderCausesImmobilitze(other);
-                }else
-                {
-                    ColliderNotImmobolizing(other);
-                }
-            }
-        }else
-        {
-            OnColliderEnter(other);
-        }
-    }
-
-    void OnTriggerExit(Collider other) 
-    {
-        if(other == null) return;
-        // check if was collider
-        int index = Array.IndexOf(_colliders, other);
-        if(index != -1)
-        {
-            other.isTrigger = false;
-            _colliders[index] = null;
-            ColliderNotImmobolizing(other);
-        }
-    }
-
     void ColliderCausesImmobilitze(Collider c)
     {
        int currentlyImmoblilizing = Array.IndexOf(_immobilizedBy, c);
@@ -178,6 +114,58 @@ public class DynamicHeightColliders : UdonSharpBehaviour
         Vector3 head = _player.GetBonePosition(HumanBodyBones.Head);
         Vector3 neck = _player.GetBonePosition(HumanBodyBones.Neck);
         Vector3 topOfHead = head + (head - neck).normalized * _viewpointToTop;
+        // Spherecast from the ground to the top of the head
+        RaycastHit[] hits = Physics.SphereCastAll(transform.position, 0.25f, Vector3.up, 5, _raycastMask, QueryTriggerInteraction.Collide);
+        Collider[] hitColliders = new Collider[hits.Length];
+        for(int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit hit = hits[i];
+            if(hit.collider == null) continue;
+            if(hit.collider.GetType() == typeof(MeshCollider) && ((MeshCollider)hit.collider).convex == false) continue; // ignore non convex colliders
+            Collider other = hit.collider;
+            hitColliders[i] = other;
+            if(other.isTrigger)
+            {
+                // check if is currently dynamic
+                int index = Array.IndexOf(_colliders, other);
+                if(index != -1)
+                {
+                    if(playerHighestY > hit.point.y && // if player collides -> immobilize
+                        other.Raycast(new Ray(transform.position, Vector3.up), out RaycastHit hit1, 6) ) // is player below collider not on the side
+                    {
+                        ColliderCausesImmobilitze(other);
+                    }else
+                    {
+                        ColliderNotImmobolizing(other);
+                    }
+                }
+            }else
+            {
+                if(playerHighestY < hit.point.y) // if player is below collider
+                {
+                    other.isTrigger = true;
+                    int free = Array.IndexOf(_colliders, null);
+                    if(free != -1)
+                    {
+                        _colliders[free] = other;
+                    }
+                }
+            }
+        }
+
+        for(int i = 0; i < _colliders.Length; i++)
+        {
+            Collider c = _colliders[i];
+            if(c == null) continue;
+            if(Array.IndexOf(hitColliders, c) == -1)
+            {
+                c.isTrigger = false;
+                _colliders[i] = null;
+                ColliderNotImmobolizing(c);
+            }
+        }
+
+
         playerY = transform.position.y;
         playerHighestY = topOfHead.y;
     }

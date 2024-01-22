@@ -68,9 +68,10 @@ namespace Thry.General
         {
             EditorGUILayout.LabelField("<size=20><color=#f542da>Toggle Adapter</color></size>", new GUIStyle(EditorStyles.label) { richText = true, alignment = TextAnchor.MiddleCenter }, GUILayout.Height(50));
 
-            serializedObject.Update();
             TA_Toggle action = (TA_Toggle)target;
             if (!ThryActionEditor.MakeSureItsAnUdonBehaviour(action)) return;
+
+            EditorGUI.BeginChangeCheck();
 
             action.action = (ThryAction)EditorGUILayout.ObjectField(new GUIContent("Thry Action"), action.action, typeof(ThryAction), true);
             action._uiToggle = (Toggle)EditorGUILayout.ObjectField(new GUIContent("Toggle"), action._uiToggle, typeof(Toggle), true);
@@ -78,6 +79,12 @@ namespace Thry.General
             EditorGUILayout.LabelField("Optional", EditorStyles.boldLabel);
 
             action._optionalAnimator = (Animator)EditorGUILayout.ObjectField(new GUIContent("Animator"), action._optionalAnimator, typeof(Animator), true);
+
+            if(EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(target);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(action);
+            }
         }
     }
 #endif

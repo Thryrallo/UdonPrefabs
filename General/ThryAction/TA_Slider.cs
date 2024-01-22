@@ -75,9 +75,10 @@ namespace Thry.General
         {
             EditorGUILayout.LabelField("<size=20><color=#f542da>Slider Adapter</color></size>", new GUIStyle(EditorStyles.label) { richText = true, alignment = TextAnchor.MiddleCenter }, GUILayout.Height(50));
 
-            serializedObject.Update();
             TA_Slider action = (TA_Slider)target;
             if (!ThryActionEditor.MakeSureItsAnUdonBehaviour(action)) return;
+
+            EditorGUI.BeginChangeCheck();
 
             action.action = (ThryAction)EditorGUILayout.ObjectField(new GUIContent("Thry Action"), action.action, typeof(ThryAction), true);
             action._uiSlider = (Slider)EditorGUILayout.ObjectField(new GUIContent("Slider"), action._uiSlider, typeof(Slider), true);
@@ -91,6 +92,12 @@ namespace Thry.General
             action._uiSliderHandleText = (Text)EditorGUILayout.ObjectField(action._uiSliderHandleText, typeof(Text), true);
             action._uiSliderHandlePostfix = EditorGUILayout.TextField(action._uiSliderHandlePostfix);
             EditorGUILayout.EndHorizontal();
+
+            if(EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(target);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(action);
+            }
 
             /*Really neat code, which is why i am leaving it in, but not really needed anymore
             action._useCurve = EditorGUILayout.Toggle("Use Curve", action._useCurve);

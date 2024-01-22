@@ -747,8 +747,6 @@ namespace Thry.General
             // Draws the default convert to UdonBehaviour button, program asset field, sync settings, etc.
             //if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
 
-            serializedObject.Update();
-
             action = (ThryAction)target;
             if (ThryActionEditor.MakeSureItsAnUdonBehaviour(action) == false) return;
 
@@ -758,6 +756,7 @@ namespace Thry.General
 
             //____________Behaviour__________
             EditorGUILayout.LabelField("Behaviour", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
             EditorGUI.BeginChangeCheck();
 
             behaviourType = (SpecialBehaviourType)EditorGUILayout.EnumPopup("Special Behaviour", (SpecialBehaviourType)action.specialActionType);
@@ -794,9 +793,11 @@ namespace Thry.General
                 NormalGUI();
             }
 
-            UdonSharpEditorUtility.CopyProxyToUdon(action);
-            serializedObject.ApplyModifiedProperties();
-
+            if(EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(target);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(action);
+            }
         }
 
         bool headerSync;

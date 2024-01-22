@@ -41,7 +41,7 @@ namespace Thry.General
         {
             EditorGUILayout.LabelField("<size=20><color=#f542da>Interact Adapter</color></size>", new GUIStyle(EditorStyles.label) { richText = true, alignment = TextAnchor.MiddleCenter }, GUILayout.Height(50));
 
-            serializedObject.Update();
+            EditorGUI.BeginChangeCheck();
             TA_Interact action = (TA_Interact)target;
             if (!ThryActionEditor.MakeSureItsAnUdonBehaviour(action)) return;
             UdonSharpEditor.UdonSharpGUI.DrawInteractSettings(action);
@@ -51,6 +51,12 @@ namespace Thry.General
                     action.action = action.gameObject.GetComponent<ThryAction>();
             }
             action.action = (ThryAction)EditorGUILayout.ObjectField(new GUIContent("Thry Action"), action.action, typeof(ThryAction), true);
+
+            if(EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(target);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(action);
+            }
         }
     }
 #endif

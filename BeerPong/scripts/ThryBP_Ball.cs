@@ -80,8 +80,6 @@ namespace Thry.BeerPong
 
         //References set by main script
         [HideInInspector]
-        public bool AutoRespawnBallAfterCupHit = true;
-        [HideInInspector]
         public Transform respawnHeight;
         [HideInInspector]
         public ThryBP_Main MainScript;
@@ -134,7 +132,7 @@ namespace Thry.BeerPong
 
         public override void OnDeserialization()
         {
-            _pickup.pickupable = state[0] == STATE_IDLE || (state[0] == STATE_IN_CUP && !AutoRespawnBallAfterCupHit);
+            _pickup.pickupable = state[0] == STATE_IDLE || (state[0] == STATE_IN_CUP && !MainScript.DoAutoRespawnBalls);
             _SetColor();
 
             if (state[0] == STATE_IDLE)
@@ -326,7 +324,7 @@ namespace Thry.BeerPong
                     localState = STATE_IN_CUP;
                     stateStartTime = Time.time;
                     _TriggerSplash();
-                    _pickup.pickupable = !AutoRespawnBallAfterCupHit;
+                    _pickup.pickupable = !MainScript.DoAutoRespawnBalls;
                 }
                 else
                 {
@@ -362,7 +360,7 @@ namespace Thry.BeerPong
                         {
                             _countedHit = true;
                             MainScript.CountCupHit(cup.PlayerCupOwner.PlayerIndex, currentPlayer, state[0] == STATE_RIMING ? 1 : 0);
-                            if(!AutoRespawnBallAfterCupHit)
+                            if(!MainScript.DoAutoRespawnBalls)
                             {
                                 NextTeam();
                                 SendCustomEventDelayedSeconds(nameof(SendItsYourTurn), 2);
@@ -370,7 +368,7 @@ namespace Thry.BeerPong
                         }
                         if (Time.time - stateStartTime > 2)
                         {
-                            if(AutoRespawnBallAfterCupHit || Time.time - stateStartTime > 20)
+                            if(MainScript.DoAutoRespawnBalls || Time.time - stateStartTime > 20)
                             {
                                 MainScript.RemoveCup(cup, currentPlayer);
                                 Respawn();
@@ -960,7 +958,7 @@ namespace Thry.BeerPong
                     {
                         hitGlass.colliderForThrow.enabled = false;
                         hitGlass.colliderInside.SetActive(true);
-                        _pickup.pickupable = !AutoRespawnBallAfterCupHit;
+                        _pickup.pickupable = !MainScript.DoAutoRespawnBalls;
                         SetState(STATE_IN_CUP);
                         state[1] = (byte)hitGlass.PlayerAnchorSide.PlayerIndex;
                         state[2] = (byte)hitGlass.Row;

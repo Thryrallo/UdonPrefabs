@@ -48,10 +48,11 @@ namespace Thry.General
         public override void OnInspectorGUI()
         {
             EditorGUILayout.LabelField("<size=20><color=#f542da>Label</color></size>", new GUIStyle(EditorStyles.label) { richText = true, alignment = TextAnchor.MiddleCenter }, GUILayout.Height(50));
-
-            serializedObject.Update();
+            
             TA_Label action = (TA_Label)target;
             if (!ThryActionEditor.MakeSureItsAnUdonBehaviour(action)) return;
+
+            EditorGUI.BeginChangeCheck();
 
             action.Label = (UnityEngine.UI.Text)EditorGUILayout.ObjectField(new GUIContent("Label"), action.Label, typeof(UnityEngine.UI.Text), true);
             action.Action = (ThryAction)EditorGUILayout.ObjectField(new GUIContent("Thry Action"), action.Action, typeof(ThryAction), true);
@@ -61,7 +62,11 @@ namespace Thry.General
             action.Prefix = EditorGUILayout.TextField(new GUIContent("Prefix"), action.Prefix);
             action.Postfix = EditorGUILayout.TextField(new GUIContent("Postfix"), action.Postfix);
 
-            serializedObject.ApplyModifiedProperties();
+            if(EditorGUI.EndChangeCheck())
+            {
+                EditorUtility.SetDirty(target);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(action);
+            }
         }
     }
 #endif
