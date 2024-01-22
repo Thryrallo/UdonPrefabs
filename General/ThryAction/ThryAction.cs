@@ -1,4 +1,4 @@
-﻿
+
 using UdonSharp;
 #if !COMPILER_UDONSHARP && UNITY_EDITOR
 using UdonSharpEditor;
@@ -805,7 +805,7 @@ namespace Thry.General
         {
             if (hiveType != HiveType.Remote && behaviourType != SpecialBehaviourType.MirrorManager)
             {
-                headerSync = EditorGUILayout.BeginFoldoutHeaderGroup(headerSync, "Syncing", headerStyle);
+                DrawFoldout("Syncing", ref headerSync);
                 if (headerSync)
                 {
                     EditorGUI.BeginChangeCheck();
@@ -818,7 +818,6 @@ namespace Thry.General
                         action.is_synced = synced;
                     }
                 }
-                EditorGUILayout.EndFoldoutHeaderGroup();
             }
             else
             {
@@ -828,7 +827,7 @@ namespace Thry.General
 
         private void ClapperGUI()
         {
-            headerClapper = EditorGUILayout.BeginFoldoutHeaderGroup(headerClapper, "Clapper Settings", headerStyle);
+            DrawFoldout("Clapper Settings", ref headerClapper);
             if (headerClapper)
             {
                 EditorGUI.indentLevel += 1;
@@ -837,7 +836,6 @@ namespace Thry.General
                 action.desktopKey = EditorGUILayout.TextField("Desktop Key", action.desktopKey);
                 EditorGUI.indentLevel -= 1;
             }
-            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
         private void ArrayGUI(string name, string text, string tooltip = "")
@@ -1019,9 +1017,33 @@ namespace Thry.General
             return arrays;
         }
 
+        void FoldoutArrow(Rect rect, Event e, bool isExpanded)
+        {
+            if (e.type == EventType.Repaint)
+            {
+                Rect arrowRect = new RectOffset(4, 0, 0, 0).Remove(rect);
+                arrowRect.width = 13;
+                EditorStyles.foldout.Draw(arrowRect, false, false, isExpanded, false);
+            }
+        }
+
+        void DrawFoldout(string header, ref bool isOpen)
+        {
+            Rect position = GUILayoutUtility.GetRect(0f, 24f, GUILayout.ExpandWidth(true));
+            GUI.Box(position, new GUIContent(header), Styles.dropDownHeader);
+            Rect arrowRect = new Rect(position){ height = 18 };
+            Event e = Event.current;
+            FoldoutArrow(arrowRect, e, isOpen);
+            if(e.type == EventType.MouseDown && arrowRect.Contains(e.mousePosition))
+            {
+                isOpen = !isOpen;
+                e.Use();
+            }
+        }
+
         private void NormalGUI()
         {
-            headerAct = EditorGUILayout.BeginFoldoutHeaderGroup(headerAct, "Actions", headerStyle);
+            DrawFoldout("Actions", ref headerAct);
             if (headerAct)
             {
                 EditorGUI.indentLevel += 1;
@@ -1089,9 +1111,8 @@ namespace Thry.General
                 EditorGUILayout.Space();
                 EditorGUI.indentLevel -= 1;
             }
-            EditorGUILayout.EndFoldoutHeaderGroup();
 
-            headerReq = EditorGUILayout.BeginFoldoutHeaderGroup(headerReq, "Requirements", headerStyle);
+            DrawFoldout("Requirements", ref headerReq);
             if (headerReq)
             {
                 EditorGUI.indentLevel += 1;
@@ -1105,20 +1126,18 @@ namespace Thry.General
                 ArrayGUI(nameof(action.autherizedPlayerDisplayNames), "Autherized Players", "Player display name has to match one of this list.");
                 EditorGUI.indentLevel -= 1;
             }
-            EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
         bool headerMirror;
         private void MirrorMangerGUI()
         {
-            headerMirror = EditorGUILayout.BeginFoldoutHeaderGroup(headerMirror, "Mirror Manager", headerStyle);
+            DrawFoldout("Mirror Manager", ref headerMirror);
             if (headerMirror)
             {
                 EditorGUI.indentLevel += 1;
                 action.maximumOpenDistance = EditorGUILayout.FloatField(new GUIContent("Maximum Distance", "Maximum distance the player can stand from the mirror and open it."), action.maximumOpenDistance);
                 EditorGUI.indentLevel -= 1;
             }
-            EditorGUILayout.EndFoldoutHeaderGroup();
         }
     }
 
