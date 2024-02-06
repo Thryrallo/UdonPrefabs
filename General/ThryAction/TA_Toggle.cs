@@ -37,6 +37,11 @@ namespace Thry.General
             if (action) action.SetBool(local_bool);
         }
 
+        private void OnEnable()
+        {
+            UpdateOptionals();
+        }
+
         public void SetAdapterBool()
         {
             _block = true;

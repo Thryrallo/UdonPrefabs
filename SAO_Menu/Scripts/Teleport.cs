@@ -14,14 +14,15 @@ namespace Thry.SAO.Button
     [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
     public class Teleport : UdonSharpBehaviour
     {
+        public UnityEngine.UI.Text Header;
         [Header("Type of Teleport")]
-        public bool isPlayerTeleport;
+        public bool IsPlayerTeleport;
 
         [Header("Point Teleport")]
-        public Transform target;
+        public Transform Target;
 
         [Header("Optional Reference")]
-        public Menu menu;
+        public Menu Menu;
 
         Notification notificationSystem;
 
@@ -36,7 +37,7 @@ namespace Thry.SAO.Button
             Debug.Log("[Thry] Try Teleport \"" + name + "\"");
             if (Networking.LocalPlayer != null)
             {
-                if (isPlayerTeleport)
+                if (IsPlayerTeleport)
                 {
                     VRCPlayerApi target = null;
                     VRCPlayerApi[] players = new VRCPlayerApi[VRCPlayerApi.GetPlayerCount()];
@@ -58,9 +59,9 @@ namespace Thry.SAO.Button
 
                     }
                 }
-                else if (target != null)
+                else if (Target != null)
                 {
-                    ExecuteTeleport(target.position, target.rotation);
+                    ExecuteTeleport(Target.position, Target.rotation);
                 }
                 else
                 {
@@ -95,7 +96,7 @@ namespace Thry.SAO.Button
             else
             {
                 Networking.LocalPlayer.TeleportTo(position, rotation);
-                if (menu != null) menu.CloseMenu();
+                if (Menu != null) Menu.CloseMenu();
             }
         }
     }
@@ -108,9 +109,9 @@ namespace Thry.SAO.Button
         {
             DrawDefaultInspector();
             Teleport teleport = (Teleport)target;
-            if(teleport.menu == null)
+            if(teleport.Menu == null)
             {
-                teleport.SetProgramVariable("menu", GameObject.Find("[SAO]Menu").GetComponent<Menu>());
+                teleport.SetProgramVariable("Menu", GameObject.Find("[SAO]Menu").GetComponent<Menu>());
             }
         }
     }

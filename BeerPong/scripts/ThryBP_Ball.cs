@@ -572,12 +572,20 @@ namespace Thry.BeerPong
             //Aim assist
             bool doFull = _isDev && (_special >= 3 || (Networking.LocalPlayer.IsUserInVR() && Input.GetAxis("Oculus_CrossPlatform_PrimaryIndexTrigger") > 0.9f));
             _special = 0;
-            if (MainScript.AimAssist > 0 || doFull)
+            float aimAssist = MainScript.AimAssist; // reducing cross script calls
+            if (aimAssist > 0 || doFull)
             {
-                start_velocity = DoAimAssistVectoring(start_velocity, transform.position, doFull?1000:MainScript.AimAssist);
+                start_velocity = DoAimAssistVectoring(start_velocity, transform.position, doFull?1000:aimAssist);
                 startVelocityLocal = start_velocity;
             }
-            MainScript.LastAimAssistPublsher.SetFloat(MainScript.AimAssist);
+            
+            ThryBP_Player player = MainScript.players[currentPlayer];
+            Networking.SetOwner(Networking.LocalPlayer, player.gameObject);
+            player.LastAimAssistStrength = aimAssist;
+            player.RequestSerialization();
+
+
+            MainScript.LastAimAssistPublsher.SetFloat(aimAssist);
 
             SetState(STATE_FYING);
             RequestSerialization();

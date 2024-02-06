@@ -17,6 +17,7 @@ public class DynamicHeightColliders : UdonSharpBehaviour
     float playerHighestY = 0;
     float playerY;
     int _raycastMask;
+    bool _isImmobile = false;
 
     Collider[] _colliders = new Collider[100];
     Collider[] _immobilizedBy = new Collider[100];
@@ -78,6 +79,9 @@ public class DynamicHeightColliders : UdonSharpBehaviour
 
     void Mobilize()
     {
+        if(!_isImmobile) return;
+        _isImmobile = false;
+
         _player.SetWalkSpeed(_walkSpeed);
         _player.SetRunSpeed(_runSpeed);
         _player.SetJumpImpulse(_jumpPower);
@@ -90,6 +94,9 @@ public class DynamicHeightColliders : UdonSharpBehaviour
     float _straveSpeed = 0;
     void Immobilize()
     {
+        if(_isImmobile) return;
+        _isImmobile = true;
+
         _walkSpeed = _player.GetWalkSpeed();
         _runSpeed = _player.GetRunSpeed();
         _jumpPower = _player.GetJumpImpulse();

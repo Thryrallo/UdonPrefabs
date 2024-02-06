@@ -23,8 +23,6 @@ namespace Thry.General
 
         public bool DEBUG = false;
 
-        AvatarHeightTracker _avatarHeightTracker;
-
         const float MIN_CLAP_VELOCITY = 0.4f;
         const float COLLIDER_SCALING_UPDATE_RATE = 5;
 
@@ -34,14 +32,6 @@ namespace Thry.General
 
         void Start()
         {
-            //Find Height Tracker
-            GameObject o = GameObject.Find("[Thry]AvatarHeightTracker");
-            if (o == null)
-            {
-                Debug.LogError("Can't Find Left Thry Hand Collider");
-                return;
-            }
-            _avatarHeightTracker = o.GetComponent<AvatarHeightTracker>();
             player = Networking.LocalPlayer;
             isNotInit = Networking.LocalPlayer == null;
             if (isRightHand)
@@ -61,7 +51,7 @@ namespace Thry.General
 
         public void Scale()
         {
-            transform.localScale = Vector3.one * _avatarHeightTracker.GetHeight() * 0.11f;
+            transform.localScale = Vector3.one * Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() * 0.11f;
             SendCustomEventDelayedSeconds(nameof(Scale), COLLIDER_SCALING_UPDATE_RATE);
         }
 
@@ -113,9 +103,9 @@ namespace Thry.General
             {
                 //Multiply speeds depending on how much the vectors are going towards eachother
                 float velocityAngleMultiplier = Mathf.Abs(-Vector3.Dot(_left._velocity.normalized, this._velocity.normalized));
-                float finalMultiplier = velocityAngleMultiplier / _avatarHeightTracker.GetHeight();
+                float finalMultiplier = velocityAngleMultiplier / Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
 
-                if (DEBUG) Debug.Log($"[Clapper] Hand Collision. Left: {finalMultiplier * _left._velocity.magnitude} Right: {finalMultiplier * this._velocity.magnitude} angleMultiplier: {velocityAngleMultiplier} avatarHeight: {_avatarHeightTracker.GetHeight()}");
+                if (DEBUG) Debug.Log($"[Clapper] Hand Collision. Left: {finalMultiplier * _left._velocity.magnitude} Right: {finalMultiplier * this._velocity.magnitude} angleMultiplier: {velocityAngleMultiplier} avatarHeight: {Networking.LocalPlayer.GetAvatarEyeHeightAsMeters()}");
                 if (finalMultiplier * _left._velocity.magnitude > MIN_CLAP_VELOCITY && finalMultiplier * this._velocity.magnitude > MIN_CLAP_VELOCITY)
                 {
                     foreach(GameObject o in clapCallbacks)

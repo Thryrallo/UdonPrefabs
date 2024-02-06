@@ -4,7 +4,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-namespace Thry.General
+namespace Thry.Deprecated
 {
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class AvatarHeightTracker : UdonSharpBehaviour

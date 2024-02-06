@@ -30,17 +30,17 @@ namespace Thry.SAO
         private Vector3[] targetPositions;
         private Vector3[] targetScale;
 
-        private Transform canvas;
+        public Transform Canvas;
 
         [Header("Test")]
         public bool TEST_VR;
         public bool OUTPUT_EXTRA_DEBUG;
         
         public BoxCollider raycastCollider;
+        public ToggleGroup MainToggleGroup;
 
         [Header("Optional References")]
-        public Camera localPlayerCamera;
-        public Animator localPlayerCameraAnimator;
+        public Camera localPlayerFaceCamera;
         public float localPlayerCameraSize = 0.25f;
         [Tooltip("Enables these gameobjects while menu is open. Suggested use indicators.")]
         public GameObject[] inWorldIndicators;
@@ -73,9 +73,9 @@ namespace Thry.SAO
         {
             if (init)
             {
-                for (int i = 0; i < canvas.childCount; i++)
+                for (int i = 0; i < Canvas.childCount; i++)
                 {
-                    Transform child = canvas.GetChild(i);
+                    Transform child = Canvas.GetChild(i);
                     child.localScale = Vector3.zero;
                     child.localPosition = targetPositions[i];
                 }
@@ -87,7 +87,7 @@ namespace Thry.SAO
             if (Networking.LocalPlayer == null) return;
             Debug.Log(DEBUG_PREFIX+"[Debug Information] IsVR:" + Networking.LocalPlayer.IsUserInVR() +
                 ", InputMethod: "+InputManager.GetLastUsedInputMethod()+
-                ", Avazar Height: "+GetLocalAvatarHeight());
+                ", Avazar Height: "+ Networking.LocalPlayer.GetAvatarEyeHeightAsMeters());
         }
 
         private bool prevVRValue = false;
@@ -96,12 +96,11 @@ namespace Thry.SAO
             if (!init)
             {
                 Debug.Log(DEBUG_PREFIX + " INITILITING...");
-                canvas = transform.GetChild(0);
-                targetPositions = new Vector3[canvas.childCount];
-                targetScale = new Vector3[canvas.childCount];
-                for (int i = 0; i < canvas.childCount; i++)
+                targetPositions = new Vector3[Canvas.childCount];
+                targetScale = new Vector3[Canvas.childCount];
+                for (int i = 0; i < Canvas.childCount; i++)
                 {
-                    Transform child = canvas.GetChild(i);
+                    Transform child = Canvas.GetChild(i);
                     targetPositions[i] = child.localPosition;
                     targetScale[i] = child.localScale;
                     child.localScale = Vector3.zero;
@@ -157,7 +156,7 @@ namespace Thry.SAO
 
         private void SetMenuPosition(bool isRightHand)
         {
-            float size = GetLocalAvatarHeight();
+            float size = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
             this.gameObject.transform.localScale = new Vector3(size, size, size);
             VRCPlayerApi.TrackingData head = VRC.SDKBase.Networking.LocalPlayer.GetTrackingData(VRC.SDKBase.VRCPlayerApi.TrackingDataType.Head);
             VRCPlayerApi.TrackingData hand;
@@ -215,22 +214,23 @@ namespace Thry.SAO
             if (RescaleObjects())
             {
                 //take picture of player if menu is done opening
-                if(localPlayerCamera != null && animation_direction == 1)
+                if(animation_direction == 1 && Networking.LocalPlayer != null)
                 {
-                    if (Networking.LocalPlayer != null)
+                    if (localPlayerFaceCamera)
                     {
                         VRCPlayerApi.TrackingData data = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
                         Vector3 cPos = data.position + data.rotation * Vector3.forward * 2;
-                        localPlayerCamera.transform.SetPositionAndRotation(cPos, Quaternion.LookRotation(data.position - cPos));
-                        localPlayerCamera.orthographicSize = localPlayerCameraSize * GetLocalAvatarHeight();
+                        localPlayerFaceCamera.transform.SetPositionAndRotation(cPos, Quaternion.LookRotation(data.position - cPos));
+                        localPlayerFaceCamera.orthographicSize = localPlayerCameraSize * Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
+                        localPlayerFaceCamera.Render();
                     }
-                    localPlayerCameraAnimator.SetTrigger("trigger");
                 }
                 finished = true;
             }
             if (finished && animation_direction == -1)
             {
                 this.gameObject.SetActive(false);
+                MainToggleGroup.SetAllTogglesOff();
             }
         }
 
@@ -240,98 +240,17 @@ namespace Thry.SAO
             if (animation_direction == -1)
                 scale = 1 - scale;
             bool allDone = true;
-            for (int i = 0; i < canvas.childCount; i++)
+            for (int i = 0; i < Canvas.childCount; i++)
             {
                 float localScale = (scale - (targetPositions[i].y) * ANIMATION_Y_MODIFIER - ANIMATION_Y_OFFSET);
-                localScale = Mathf.Min(1, Mathf.Max(localScale, 0));
+                localScale = Mathf.Clamp01(localScale);
                 if ((localScale < 1 && animation_direction == 1) || (localScale > 0 && animation_direction == -1))
                     allDone = false;
-                Transform child = canvas.GetChild(i);
+                Transform child = Canvas.GetChild(i);
                 child.localScale = targetScale[i] * localScale;
                 child.localPosition = (startPosition + (targetPositions[i] - startPosition) * localScale);
             }
             return allDone;
-        }
-
-        //--------------List Helpers--------------
-
-        private object[] ListAdd(object[] array, object o)
-        {
-            object[] newArray = new object[array.Length + 1];
-            for (int i = 0; i < array.Length; i++)
-                newArray[i] = array[i];
-            newArray[array.Length] = o;
-            return newArray;
-        }
-
-        private object[] ListRemoveObject(object[] array, object o)
-        {
-            object[] newArray = new object[array.Length - 1];
-            int newArrayIndex = 0;
-            for (int i = 0; i < array.Length; i++)
-            {
-                if (array[i] != o)
-                    newArray[newArrayIndex++] = array[i];
-            }
-            return newArray;
-        }
-
-        private object[] ListRemoveIndex(object[] array, int removeIndex)
-        {
-            object[] newArray = new object[array.Length - 1];
-            int newArrayIndex = 0;
-            for (int i = 0; i < array.Length; i++)
-            {
-                if (i != removeIndex)
-                    newArray[newArrayIndex++] = array[i];
-            }
-            return newArray;
-        }
-
-        private bool ListContains(object[] array, object o)
-        {
-            for (int i = 0; i < array.Length; i++)
-            {
-                if (array[i] == o)
-                    return true;
-            }
-            return false;
-        }
-
-        private int ListGetIndex(object[] array, object o)
-        {
-            for (int i = 0; i < array.Length; i++)
-            {
-                if (array[i] == o)
-                    return i;
-            }
-            return -1;
-        }
-
-        //--------------PLAYER HEIGHT----------------
-
-        public float GetAvatarHeight(VRCPlayerApi player)
-        {
-            float height = 0;
-            Vector3 postition1 = player.GetBonePosition(HumanBodyBones.Head);
-            Vector3 postition2 = player.GetBonePosition(HumanBodyBones.Neck);
-            height += (postition1 - postition2).magnitude;
-            postition1 = postition2;
-            postition2 = player.GetBonePosition(HumanBodyBones.Hips);
-            height += (postition1 - postition2).magnitude;
-            postition1 = postition2;
-            postition2 = player.GetBonePosition(HumanBodyBones.RightLowerLeg);
-            height += (postition1 - postition2).magnitude;
-            postition1 = postition2;
-            postition2 = player.GetBonePosition(HumanBodyBones.RightFoot);
-            height += (postition1 - postition2).magnitude;
-            return height > 0 ? height : 1;
-        }
-        private float GetLocalAvatarHeight()
-        {
-            if (Networking.LocalPlayer == null)
-                return 1;
-            return GetAvatarHeight(Networking.LocalPlayer);
         }
     }
 }

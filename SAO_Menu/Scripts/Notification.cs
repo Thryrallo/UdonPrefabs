@@ -12,6 +12,10 @@ namespace Thry.SAO
         public bool DO_ANNOUNCE_PLAYERS;
         public Texture playerJoinTexture;
         public Texture playerLeaveTexture;
+        public Color PlayerJoinColor;
+        public Color PlayerLeaveColor;
+        public Color PlayerNotificationBackgroundColor;
+        const float PlayerNotificationTime =  4;
 
         [Header("Textures")]
         public Texture tex_Allow;
@@ -23,6 +27,7 @@ namespace Thry.SAO
 
         public UnityEngine.UI.Text textUI;
         public UnityEngine.UI.RawImage imageUI;
+        public UnityEngine.UI.RawImage iconBackgroundUI;
 
         public UnityEngine.UI.Text details_textUI;
         public GameObject details_background;
@@ -74,12 +79,12 @@ namespace Thry.SAO
             Queue(QueueWithParamTextDuration_param0, null, null, defaultColor, Color.white, float.Parse(QueueWithParamTextDuration_param1), TYPE_NONE);
         }
 
-        public void Queue(string title, string content, Texture texture, Color textureColor, Color backgroundColor, float duration, int type)
+        public void Queue(string title, string content, Texture iconTexture, Color iconColor, Color backgroundColor, float duration, int type)
         {
             titleQueue[queueEnd] = title;
             detailsQueue[queueEnd] = content;
-            textureQueue[queueEnd] = texture;
-            iconColorQueue[queueEnd] = textureColor;
+            textureQueue[queueEnd] = iconTexture;
+            iconColorQueue[queueEnd] = iconColor;
             backgroundColorQueue[queueEnd] = backgroundColor;
             durationQueue[queueEnd] = duration;
             typeQueue[queueEnd] = type;
@@ -109,6 +114,9 @@ namespace Thry.SAO
 
                 //icon color
                 imageUI.color = iconColorQueue[queueStart];
+                Color iconBackground = backgroundColorQueue[queueStart];
+                iconBackground.a = 1;
+                iconBackgroundUI.color = iconBackground;
 
                 //background color
                 background.material.color = backgroundColorQueue[queueStart];
@@ -132,7 +140,7 @@ namespace Thry.SAO
 
         public override void OnPlayerJoined(VRCPlayerApi joinedPlayerApi)
         {
-            if (DO_ANNOUNCE_PLAYERS && Time.time - startTime > 10)
+            if (DO_ANNOUNCE_PLAYERS && Time.time - startTime > 20)
             {
                 if (queuedJoinNotifications == 0)
                 {
@@ -142,13 +150,13 @@ namespace Thry.SAO
                 {
                     if (queuedJoinNotifications > 5)
                     {
-                        Queue("A lot of players", null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_NONE);
+                        Queue("A lot of players", null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_NONE);
                         sentALotJoinNotification = true;
                     }
                     else
                     {
                         queuedJoinNotifications += 1;
-                        Queue(joinedPlayerApi.displayName, null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_JOIN);
+                        Queue(joinedPlayerApi.displayName, null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_JOIN);
                     }
                 }
             }
@@ -165,13 +173,13 @@ namespace Thry.SAO
                 {
                     if (queuedLeaveNotifications > 5)
                     {
-                        Queue("A lot of players", null, playerLeaveTexture, new Color(1, 0.5f, 0), Color.white, 5f, TYPE_NONE);
+                        Queue("A lot of players", null, playerLeaveTexture, PlayerLeaveColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_NONE);
                         sentALotLeaveNotification = true;
                     }
                     else
                     {
                         queuedLeaveNotifications += 1;
-                        Queue(leftPlayerApi.displayName, null, playerLeaveTexture, new Color(1, 0.5f, 0), Color.white, 5f, TYPE_LEAVE);
+                        Queue(leftPlayerApi.displayName, null, playerLeaveTexture, PlayerLeaveColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_LEAVE);
                     }
                 }
             }
@@ -203,24 +211,21 @@ namespace Thry.SAO
 
         public void TestPlayerJoin()
         {
-            if (DO_ANNOUNCE_PLAYERS && Time.time - startTime > 10)
+            if (queuedJoinNotifications == 0)
             {
-                if (queuedJoinNotifications == 0)
+                sentALotJoinNotification = false;
+            }
+            if (!sentALotJoinNotification)
+            {
+                if (queuedJoinNotifications > 5)
                 {
-                    sentALotJoinNotification = false;
+                    Queue("A lot of players", null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_NONE);
+                    sentALotJoinNotification = true;
                 }
-                if (!sentALotJoinNotification)
+                else
                 {
-                    if (queuedJoinNotifications > 5)
-                    {
-                        Queue("A lot of players", null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_NONE);
-                        sentALotJoinNotification = true;
-                    }
-                    else
-                    {
-                        queuedJoinNotifications += 1;
-                        Queue("Test Player", null, playerJoinTexture, new Color(0.25f, 1, 0), Color.white, 5f, TYPE_JOIN);
-                    }
+                    queuedJoinNotifications += 1;
+                    Queue("Test Player", null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_JOIN);
                 }
             }
         }

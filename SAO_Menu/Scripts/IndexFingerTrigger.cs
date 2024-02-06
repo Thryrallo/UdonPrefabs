@@ -35,22 +35,12 @@ namespace Thry.SAO
         [HideInInspector]
         public bool _blockInput = false;
 
-        AvatarHeightTracker _avatarHeightTracker;
-
         bool _isNotVR = true;
         VRCPlayerApi _player;
         AudioSource _audioSource;
 
         private void Start()
         {
-            //Find Height Tracker
-            GameObject o = GameObject.Find("[Thry]AvatarHeightTracker");
-            if (o == null)
-            {
-                Debug.LogError("[Thry][FingerTrigger]Can't Find AvatarHeightTracker");
-                return;
-            }
-            _avatarHeightTracker = o.GetComponent<AvatarHeightTracker>();
             _audioSource = this.GetComponent<AudioSource>();
 
             _player = Networking.LocalPlayer;
@@ -192,7 +182,8 @@ namespace Thry.SAO
         {
             ScrollRect scrollRect = other.GetComponent<ScrollRect>();
             //executes if moved over threshold distance away from enter position
-            if (scrollRect && (transform.position - startPosition).sqrMagnitude > scrollThresholdSquare * _avatarHeightTracker.GetHeight())
+            float height = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
+            if (scrollRect && (transform.position - startPosition).sqrMagnitude > scrollThresholdSquare * height)
             {
                 //isScrolling is used to block touch inputs
                 if (!isScrolling)
@@ -201,7 +192,7 @@ namespace Thry.SAO
                     scrollCollider = other;
                     for (int i = 0; i < currentColliders.Length; i++) currentCollidersBlockPress[i] = true;
                 }
-                scrollRect.verticalNormalizedPosition += -delta.y * scrollSpeed * scrollRect.verticalScrollbar.size / _avatarHeightTracker.GetHeight();
+                scrollRect.verticalNormalizedPosition += -delta.y * scrollSpeed * scrollRect.verticalScrollbar.size / height;
             }
             Slider slider = other.GetComponent<Slider>();
             BoxCollider boxCollider = other.GetComponent<BoxCollider>();
@@ -236,7 +227,7 @@ namespace Thry.SAO
             HandleDrag();
             if (isRightHand) SetToMostPreciseRightIndexFingerPosition(transform);
             else SetToMostPreciseLeftIndexFingerPosition(transform);
-            transform.localScale = Vector3.one * (0.01f * _avatarHeightTracker.GetHeight());
+            transform.localScale = Vector3.one * (0.01f * Networking.LocalPlayer.GetAvatarEyeHeightAsMeters());
             lastPosition = currentPosition;
             currentPosition = this.transform.position;
         }

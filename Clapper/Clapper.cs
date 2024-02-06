@@ -159,7 +159,7 @@ namespace Thry.Clapper
         public override void OnInspectorGUI()
         {
             if (UdonSharpGUI.DrawDefaultUdonSharpBehaviourHeader(target)) return;
-            EditorGUILayout.HelpBox("For this prefab to work you need to have [Thry]HandCollider_L, [Thry]HandCollider_R and [Thry]AvatarHeightTracker in your scene.", MessageType.Warning);
+            EditorGUILayout.HelpBox("For this prefab to work you need to have [Thry]HandCollider_L and [Thry]HandCollider_R in your scene.", MessageType.Warning);
             EditorGUILayout.HelpBox("Place any clapper behaviour as child of this gameobject.", MessageType.Info);
         }
     }

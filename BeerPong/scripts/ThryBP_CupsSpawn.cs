@@ -67,6 +67,7 @@ namespace Thry.BeerPong
         [UdonSynced]
         int _score;
         public UnityEngine.UI.Text[] UI_score_boards;
+        public PlayerScoreAnnouncement ScoreAnnouncement;
 
         const byte PLAYER_VALUE_NONE = 255;
 
@@ -147,6 +148,7 @@ namespace Thry.BeerPong
 
         public void AddToScore(int a)
         {
+            if(a == 0) return;
             if (Networking.IsOwner(gameObject) == false) Networking.SetOwner(Networking.LocalPlayer, gameObject);
             _score += a;
             UpdateUI();
@@ -157,6 +159,8 @@ namespace Thry.BeerPong
         {
             string s = _score.ToString("D4");
             foreach (UnityEngine.UI.Text t in UI_score_boards) t.text = s;
+            if(_score != 0)
+                ScoreAnnouncement.ShowScore(_score);
         }
 
         //=======Array reseting========
@@ -267,6 +271,7 @@ namespace Thry.BeerPong
             }
             _score = 0;
             _hit = 0;
+            ScoreAnnouncement.ResetScore();
             UpdateUI();
             SyncGlasses();
             RequestSerialization();

@@ -1,0 +1,121 @@
+#T#ThryRFProperties
+[HideInInspector] m_RF("Reactive Floor--{reference_property:_EnableEmission}", Float) = 0
+_RF_Min_Distance("RF Min Distance", Float) = 0
+_RF_Max_Distance("RF Max Distance", Float) = 5
+[Gradient]_RF_Map("Map--{texture:{width:512,height:4,filterMode:Bilinear,wrapMode:Clamp},force_texture_options:true}", 2D) = "white" { }
+_RF_Ramp_Pan("Ramp Pan Speed", Float) = 0
+
+// _RF_Color0("RF Color 1", Color) = (1,0,0,1)
+// _RF_Color1("RF Color 2", Color) = (0,1,0,1)
+// _RF_Color2("RF Color 3", Color) = (0,0,1,1)
+// _RF_Color3("RF Color 4", Color) = (0,0,1,1)
+// _RF_Color4("RF Color 5", Color) = (0,0,1,1)
+// _RF_Color5("RF Color 6", Color) = (0,0,1,1)
+// _RF_Color6("RF Color 7", Color) = (0,0,1,1)
+// _RF_Color7("RF Color 8", Color) = (0,0,1,1)
+
+[HideInInspector][NonModifiableTextureData] _RF_ArrayLength ("RF Array Length", Integer) = 0
+
+#T#ThryRFVariables
+Texture2D _RF_Map;
+float4 _RF_Map_ST;
+float4 _ReactivePositions[100];
+float4 _ReactiveColors1[100];
+float4 _ReactiveColors2[100];
+float4 _ReactiveSpecial[100];
+float _RF_Min_Distance;
+float _RF_Max_Distance;
+int _RF_ArrayLength;
+float _RF_Ramp_Pan;
+
+float4 _RF_Color0;
+float4 _RF_Color1;
+float4 _RF_Color2;
+float4 _RF_Color3;
+float4 _RF_Color4;
+float4 _RF_Color5;
+float4 _RF_Color6;
+float4 _RF_Color7;
+
+#T#ThryRFFunction
+void CalcThryRF(inout PoiFragData poiFragData, inout PoiMods poiMods, in PoiMesh poiMesh)
+{
+    // _ReactivePositions[0] = float4(5.26, 0, -6.11, 1);
+    // _ReactivePositions[1] = float4(4.46, 0, -6.11, 1);
+    // _RF_ArrayLength = 2;
+
+    float totalHue = 0;
+    float totalStrength = 0.000001;
+    float maxLerpStrength = 0;
+
+    float totalHueBackground = 0;
+    float totalStrengthBackground = 0.000001;
+    float maxLerpStrengthBackground = 0;
+    for (int i = 0; i < _RF_ArrayLength; i++) {
+        if (length(_ReactivePositions[i].xyz) > 0) {
+            float normalizedDistance = (distance(poiMesh.worldPos, _ReactivePositions[i].xyz) - _RF_Min_Distance) / (_RF_Max_Distance - _RF_Min_Distance);
+
+            // float4 circlecolor;
+            // int colorI = (i % 6);
+            // if (colorI == 0) circlecolor = _RF_Color0;
+            // else if (colorI == 1) circlecolor = _RF_Color1;
+            // else if (colorI == 2) circlecolor = _RF_Color2;
+            // else if (colorI == 3) circlecolor = _RF_Color3;
+            // else if (colorI == 4) circlecolor = _RF_Color4;
+            // else if (colorI == 5) circlecolor = _RF_Color5;
+            // else if (colorI == 6) circlecolor = _RF_Color6;
+            // else if (colorI == 7) circlecolor = _RF_Color7;
+            // float3 hsv = RGBtoHSV(circlecolor.rgb);
+            float3 hsvFG = RGBtoHSV(_ReactiveColors1[i].rgb);
+            float3 hsvBG = RGBtoHSV(_ReactiveColors2[i].rgb);
+
+            if(_ReactiveSpecial[i].x > 0.5)
+            {
+                float delta = _Time.x * (_ReactiveSpecial[i].y - 0.5) * 10;
+                hsvFG.x = fmod(hsvFG.x + delta, 1);
+                hsvBG.x = fmod(hsvBG.x + delta, 1);
+            }
+
+            
+            float v = 1 - saturate(normalizedDistance);
+            if (v > 0.0001) {
+                float mask = UNITY_SAMPLE_TEX2D_SAMPLER(_RF_Map, _MainTex, float2(v + 0.01, 0.5)).a;
+                float ramp = UNITY_SAMPLE_TEX2D_SAMPLER(_RF_Map, _MainTex, _RF_Map_ST.x * float2(v + _RF_Ramp_Pan * _Time.x, 0.5)).r;
+                
+                // float lerpValue = ramp * mask * circlecolor.a;
+                float lerpValue = ramp * mask;
+                
+                totalHue += hsvFG.x * mask;
+                totalStrength += mask;
+                maxLerpStrength = max(maxLerpStrength, lerpValue);
+            }
+            
+            
+            float backgroundLerp = 1 - remapClamped(1.1, 1.1, normalizedDistance);
+            totalHueBackground += hsvBG.x * backgroundLerp;
+            totalStrengthBackground += backgroundLerp;
+            maxLerpStrengthBackground = max(maxLerpStrengthBackground, backgroundLerp);
+        }
+    }
+
+    // colorshift the background to the same hue 
+    totalHueBackground = totalHueBackground / totalStrengthBackground;
+    float3 bgHSV = RGBtoHSV(_ParallaxInternalMaxColor.rgb);
+    bgHSV.x = lerp(bgHSV.x, totalHueBackground, maxLerpStrengthBackground);
+    poiMods.globalColorTheme[1] = float4(HSVtoRGB(bgHSV), 1);
+    
+    totalHue = totalHue / totalStrength;
+    float3 totalColor = HSVtoRGB(float3(totalHue, 1, 1));
+    poiMods.globalColorTheme[0] = float4(totalColor, maxLerpStrength);
+}
+
+void ApplyThryRF(inout PoiFragData poiFragData, inout PoiMods poiMods)
+{
+    poiFragData.finalColor.rgb = lerp(poiFragData.finalColor.rgb, poiMods.globalColorTheme[0].rgb, poiMods.globalColorTheme[0].a);
+}
+
+#T#ThryRFCalcCall
+CalcThryRF(poiFragData, poiMods, poiMesh);
+
+#T#ThryRFApplyCall
+ApplyThryRF(poiFragData, poiMods);

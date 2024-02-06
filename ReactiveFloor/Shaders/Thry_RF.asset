@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1039f25740a92fc4292bb1d94d07ad19, type: 3}
+  m_Name: Thry_RF
+  m_EditorClassIdentifier: 
+  Id: ThryRF
+  Name: 
+  Version: 1.0
+  Author: Thry
+  Description: 
+  EnableProperties: []
+  Properties: []
+  ModuleDependencies: []
+  IncompatibleWith: []
+  Templates:
+  - Template: {fileID: 5100181714428356321, guid: 6ea490c3591ac1d4d8167103d7f09e8b,
+      type: 3}
+    Keywords:
+    - SPECIALFX_PROPERTIES
+    NeedsVariant: 0
+    Queue: 101
+  - Template: {fileID: -6569297604727871168, guid: 6ea490c3591ac1d4d8167103d7f09e8b,
+      type: 3}
+    Keywords:
+    - BASE_PROPERTY_VARIABLES
+    - META_PROPERTY_VARIABLES
+    NeedsVariant: 0
+    Queue: 101
+  - Template: {fileID: -846595321339840115, guid: 6ea490c3591ac1d4d8167103d7f09e8b,
+      type: 3}
+    Keywords:
+    - FRAGMENT_BASE_FUNCTIONS
+    - FRAGMENT_META_FUNCTIONS
+    NeedsVariant: 0
+    Queue: 101
+  - Template: {fileID: -6961329959874118022, guid: 6ea490c3591ac1d4d8167103d7f09e8b,
+      type: 3}
+    Keywords:
+    - FRAGMENT_BASE_EMISSION
+    - FRAGMENT_META_EMISSION
+    NeedsVariant: 0
+    Queue: 101
+  - Template: {fileID: 3545802099822387724, guid: 6ea490c3591ac1d4d8167103d7f09e8b,
+      type: 3}
+    Keywords:
+    - FRAGMENT_BASE_INIT
+    - FRAGMENT_BASE_INIT
+    NeedsVariant: 0
+    Queue: 101
+  Functions: []
+  AdditionalSerializedData: 

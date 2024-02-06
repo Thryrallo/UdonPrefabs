@@ -43,12 +43,22 @@ namespace Thry.BeerPong
         [UdonSynced] int _numberOfThrows = 0;
         [UdonSynced] int _numberOfHits = 0;
 
+        
+        [UdonSynced, HideInInspector]
+        public float LastAimAssistStrength = 0;
+
         public void Init(Transform[] anchors)
         {
             ogColor = playerColor;
             uiButtonMaterial = uiButton.GetComponent<Renderer>().material;
             uiButtonMaterial.color = playerColor;
-            foreach (UnityEngine.UI.Image i in uiImagesUsingPlayerColor) i.color = playerColor;
+            foreach (UnityEngine.UI.Image i in uiImagesUsingPlayerColor)
+            {
+                // Keep original alpha
+                Color c = playerColor;
+                c.a = i.color.a;
+                i.color = c;
+            }
             cups.Init(anchors);
             if (Networking.IsOwner(gameObject)) RequestSerialization();
         }
