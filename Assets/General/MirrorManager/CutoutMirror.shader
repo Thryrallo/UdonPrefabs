@@ -68,8 +68,8 @@
 
                 half4 tex = tex2D(_MainTex, i.uv);
                 half4 refl = unity_StereoEyeIndex == 0 ? tex2Dproj(_ReflectionTex0, UNITY_PROJ_COORD(i.refl)) : tex2Dproj(_ReflectionTex1, UNITY_PROJ_COORD(i.refl));
-                if(refl.x == 0 && refl.y == 0 && refl.z == 0 && refl.w == 0)
-					refl.a = 0;
+                //if(refl.x == 0 && refl.y == 0 && refl.z == 0 && refl.w == 0)
+				//	refl.a = 0;
                 refl.a = refl.a * _Transparency;
                 return refl;
             }

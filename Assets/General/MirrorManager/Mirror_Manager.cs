@@ -10,6 +10,10 @@ namespace Thry
     [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class Mirror_Manager : UdonSharpBehaviour
     {
+        public const byte TYPE_FULL = 0;
+        public const byte TYPE_PLAYER = 1;
+        public const byte TYPE_LOCAL_PLAYER = 2;
+
         public int RequiredClaps = 2;
         public string ClapperKey = "m";
         public float MaximumOpeningDistance = 5;
@@ -20,20 +24,14 @@ namespace Thry
         // Layer 18
         public LayerMask LocalPlayerMask = 1 << 18;
 
-        public Material NormalMirrorMaterial;
-        public Material TransprentMirrorMaterial;
-
         [NonSerialized] public float Transparency = 1;
-        private VRC_MirrorReflection _activeMirrorRefelctionMain;
-        private VRC_MirrorReflection _activeMirrorRefelctionCutout;
-        private Renderer _activeMirrorRendererMain;
-        private Renderer _activeMirrorRendererCutout;
-        private Renderer _activeMirrorIcon;
+        private ThryMirror _activeMirror;
         private int _lastMask;
         [NonSerialized] public bool DoCutout;
-        private bool _hasCutout;
 
         private TextMeshProUGUI _mirrorInformation;
+        private ThryMirrorMenu[] _allMenus = new ThryMirrorMenu[2];
+        private int _allMenusLength = 0;
 
         public static Mirror_Manager Get()
         {
@@ -73,60 +71,50 @@ namespace Thry
             _lastMask = FullMask;
         }
 
+        public void RegisterMirrorMenu(ThryMirrorMenu menu)
+        {
+            if(_allMenusLength >= _allMenus.Length)
+            {
+                ThryMirrorMenu[] newMenus = new ThryMirrorMenu[_allMenus.Length * 2];
+                Array.Copy(_allMenus, newMenus, _allMenus.Length);
+                _allMenus = newMenus;
+            }
+            _allMenus[_allMenusLength++] = menu;
+        }
+
         public void OnClap()
         {
-            ToggleMirror(_lastMask);
+            FindMirror(_lastMask);
         }
 
         public void FullMirror()
         {
-            ToggleMirror(FullMask);
-            ApplyTransparency(Transparency);
+            FindMirror(FullMask);
         }
 
         public void PlayerMirror()
         {
-            ToggleMirror(AllPlayerMask);
-            ApplyTransparency(Transparency);
+            FindMirror(AllPlayerMask);
         }
 
         public void LocalPlayerMirror()
         {
-            ToggleMirror(LocalPlayerMask);
-            ApplyTransparency(Transparency);
+            FindMirror(LocalPlayerMask);
         }
 
-        public void UpdateTransparency()
+        public void MirrorSettingsChanged()
         {
-            ApplyTransparency(Transparency);
-        }
-
-        public void UpdateCutout()
-        {
-            SetActiveMirrorOn(_lastMask);
-            ApplyTransparency(Transparency);
-        }
-
-        private void ApplyTransparency(float value)
-        {
-            if (_activeMirrorRefelctionMain)
+            if (_activeMirror)
             {
-                value = Mathf.Clamp01(value);
-                if (value == 1)
-                {
-                    _activeMirrorRendererMain.sharedMaterial = NormalMirrorMaterial;
-                }
-                else
-                {
-                    TransprentMirrorMaterial.SetFloat("_Transparency", value);
-                    _activeMirrorRendererMain.sharedMaterial = TransprentMirrorMaterial;
-                }
-                if(_hasCutout)
-                    _activeMirrorRendererCutout.sharedMaterial.SetFloat("_Transparency", value);
+                _activeMirror.Set(_lastMask, DoCutout, Transparency);
+            }
+            for(int i=0;i<_allMenusLength;i++)
+            {
+                _allMenus[i].UpdateUI();
             }
         }
 
-        private void ToggleMirror(int mask)
+        private void FindMirror(int mask)
         {
             VRCPlayerApi.TrackingData trackingData = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
 
@@ -136,112 +124,65 @@ namespace Thry
             RaycastHit hit;
             if (Physics.Raycast(lookRay, out hit, MaximumOpeningDistance, 16, QueryTriggerInteraction.Collide))
             {
-                GameObject obj = hit.collider.gameObject;
-                VRC_MirrorReflection mirror = (VRC_MirrorReflection)obj.GetComponentInChildren(typeof(VRC_MirrorReflection));
-                Renderer renderer = obj.GetComponent<Renderer>();
-                Renderer icon = GetIcon(obj.transform);
-                if (mirror && renderer)
+                if(hit.transform.transform.parent != null)
                 {
-                    // _activeMirrorRefelction.m_ReflectLayers = LocalPlayerMask;
-                    if(_activeMirrorRefelctionMain == mirror)
+                    ThryMirror mirror = hit.transform.parent.GetComponent<ThryMirror>(); 
+                    if (mirror)
                     {
-                        if(_activeMirrorRefelctionMain.m_ReflectLayers != mask)
-                        {
-                            SetActiveMirrorOn(mask);
-                        }else
-                        {
-                            SetActiveMirrorOff();
-                        }
+                        OpenInternal(mirror, mask);
+                        return;
                     }
-                    else
-                    {
-                        SetActiveMirrorOff();
-                        _activeMirrorRefelctionMain = mirror;
-                        _activeMirrorRendererMain = renderer;
-                        _activeMirrorIcon = icon;
-                        _activeMirrorRefelctionCutout = null;
-                        _activeMirrorRendererCutout = null;
-                        _hasCutout = false;
-                        if (mirror.transform.childCount > 0)
-                        {
-                            Transform child = mirror.transform.GetChild(0);
-                            _activeMirrorRefelctionCutout = (VRC_MirrorReflection)child.GetComponent(typeof(VRC_MirrorReflection));
-                            _activeMirrorRendererCutout = child.GetComponentInChildren<Renderer>();
-                            _hasCutout = _activeMirrorRefelctionCutout != null;
-                        }
-                        SetActiveMirrorOn(mask);
-                    }
-                    return;
                 }
             }
-            SetActiveMirrorOff();
+            
+            TurnOffActive();
         }
 
-        private void SetActiveMirrorOff()
+        public void Open(ThryMirror mirror, int type)
         {
-            if (_activeMirrorRefelctionMain)
+            switch (type)
             {
-                _activeMirrorRefelctionMain.enabled = false;
-                _activeMirrorRendererMain.enabled = false;
-                _activeMirrorRefelctionCutout.enabled = false;
-                _activeMirrorRendererCutout.enabled = false;
-                if (_activeMirrorIcon)
-                    _activeMirrorIcon.enabled = true;
-                _activeMirrorRefelctionMain = null;
-                _activeMirrorRendererMain = null;
-                _activeMirrorIcon = null;
+                case TYPE_FULL:
+                    OpenInternal(mirror, FullMask);
+                    break;
+                case TYPE_PLAYER:
+                    OpenInternal(mirror, AllPlayerMask);
+                    break;
+                case TYPE_LOCAL_PLAYER:
+                    OpenInternal(mirror, LocalPlayerMask);
+                    break;
             }
         }
-        
-        private void SetActiveMirrorOn(int mask)
+
+        private void OpenInternal(ThryMirror mirror, int mask)
         {
-            if (_activeMirrorRefelctionMain)
+            if(_activeMirror == mirror)
             {
+                if(_lastMask != mask)
+                {
+                    _activeMirror.Set(mask, DoCutout, Transparency);
+                    _lastMask = mask;
+                }else
+                {
+                    TurnOffActive();
+                }
+            }
+            else
+            {
+                TurnOffActive();
+                _activeMirror  = mirror;
+                _activeMirror.Set(mask, DoCutout, Transparency);
                 _lastMask = mask;
-
-                if (_hasCutout)
-                {
-                    if(DoCutout)
-                    {
-                        _activeMirrorRefelctionMain.enabled = false;
-                        _activeMirrorRendererMain.enabled = false;
-                        _activeMirrorRefelctionCutout.enabled = true;
-                        _activeMirrorRendererCutout.enabled = true;
-                    }
-                    else
-                    {
-                        _activeMirrorRefelctionCutout.enabled = false;
-                        _activeMirrorRendererCutout.enabled = false;
-                        _activeMirrorRefelctionMain.enabled = true;
-                        _activeMirrorRendererMain.enabled = true;
-                    }
-                    _activeMirrorRefelctionMain.m_ReflectLayers = mask;
-                    _activeMirrorRefelctionCutout.m_ReflectLayers = mask;
-                }
-                else
-                {
-                    _activeMirrorRefelctionMain.enabled = true;
-                    _activeMirrorRendererMain.enabled = true;
-                    _activeMirrorRefelctionMain.m_ReflectLayers = mask;
-                }
-
-                if (_activeMirrorIcon)
-                    _activeMirrorIcon.enabled = false;
             }
         }
 
-        private Renderer GetIcon(Transform mirrorTransform)
+        private void TurnOffActive()
         {
-            int siblingIndex = 0;
-            if (mirrorTransform.parent != null && (siblingIndex = mirrorTransform.GetSiblingIndex()) > 0)
+            if(_activeMirror)
             {
-                Transform t = mirrorTransform.parent.GetChild(siblingIndex - 1);
-                if (t.name == "MirrorIcon")
-                {
-                    return t.GetComponent<Renderer>();
-                }
+                _activeMirror.SetOff();
+                _activeMirror = null;
             }
-            return null;
         }
     }
 }

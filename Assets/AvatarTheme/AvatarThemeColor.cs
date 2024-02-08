@@ -109,18 +109,17 @@ namespace Thry
             VRCAsyncGPUReadback.Request(LocalPlayerBodyCamera.targetTexture, 0, (IUdonEventReceiver)this);
         }
 
-        bool[] _reflectionProbeNeedsUpdating;
+        bool[] _reflectionProbeNeedsEnabling;
         void DisableRelfectionProbes(Vector3 pos)
         {
-            _reflectionProbeNeedsUpdating = new bool[ReflectionProbes.Length];
+            _reflectionProbeNeedsEnabling = new bool[ReflectionProbes.Length];
             for (int i = 0; i < ReflectionProbes.Length; i++)
             {
                 // check if near
                 Bounds bounds = ReflectionProbes[i].bounds;
                 bounds.Expand(Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() * 2);
-                _reflectionProbeNeedsUpdating[i] = ReflectionProbes[i].refreshMode == UnityEngine.Rendering.ReflectionProbeRefreshMode.OnAwake &&
-                    bounds.Contains(pos);
-                if (bounds.Contains(pos))
+                _reflectionProbeNeedsEnabling[i] = ReflectionProbes[i].enabled && bounds.Contains(pos);
+                if (_reflectionProbeNeedsEnabling[i])
                     ReflectionProbes[i].enabled = false;
             }
         }
@@ -129,10 +128,11 @@ namespace Thry
         {
             for (int i = 0; i < ReflectionProbes.Length; i++)
             {
-                if (_reflectionProbeNeedsUpdating[i])
+                if (_reflectionProbeNeedsEnabling[i])
                 {
                     ReflectionProbes[i].enabled = true;
-                    ReflectionProbes[i].RenderProbe();
+                    if(ReflectionProbes[i].refreshMode == UnityEngine.Rendering.ReflectionProbeRefreshMode.OnAwake)
+                        ReflectionProbes[i].RenderProbe();
                 }
             }
         }

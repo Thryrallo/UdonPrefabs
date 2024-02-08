@@ -734,13 +734,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: _reflectionProbeNeedsUpdating
+      Data: _reflectionProbeNeedsEnabling
     - Name: $v
       Entry: 7
       Data: 38|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: _reflectionProbeNeedsUpdating
+      Data: _reflectionProbeNeedsEnabling
     - Name: <UserType>k__BackingField
       Entry: 7
       Data: 39|System.RuntimeType, mscorlib
