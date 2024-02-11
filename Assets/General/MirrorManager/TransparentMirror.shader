@@ -9,7 +9,7 @@
     }
     SubShader
     {
-        Tags{ "RenderType" = "Transparent" "Queue" = "Transparent" }
+        Tags{ "RenderType" = "Transparent" "Queue" = "Transparent-1" }
         LOD 100
 
         Blend SrcAlpha OneMinusSrcAlpha
@@ -66,10 +66,9 @@
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
-                half4 tex = tex2D(_MainTex, i.uv);
                 half4 refl = unity_StereoEyeIndex == 0 ? tex2Dproj(_ReflectionTex0, UNITY_PROJ_COORD(i.refl)) : tex2Dproj(_ReflectionTex1, UNITY_PROJ_COORD(i.refl));
-                refl.a *= _Transparency;
-                return tex * refl;
+                refl.a = refl.a * _Transparency;
+                return refl;
             }
             ENDCG
         }

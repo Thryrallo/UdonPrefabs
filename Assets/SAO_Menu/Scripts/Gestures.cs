@@ -14,9 +14,10 @@ namespace Thry.SAO
 
         [Header("Optional")]
         [Tooltip("Debug Text Object. Used for development.")]
-        public UnityEngine.UI.Text debugText;
-        public bool doDebuggingLeft;
-        public bool doDebuggingRight;
+        public GameObject DebugGameObject;
+        public UnityEngine.UI.Text DebugText;
+        public bool DoDebuggingLeft;
+        public bool DoDebuggingRight;
 
         const float SLOW_UPDATE_RATE = 0.5f;
         private float last_slow_update = 0;
@@ -34,6 +35,14 @@ namespace Thry.SAO
 
         private void SlowUpdate()
         {
+        }
+
+        public void UpdateDebugging()
+        {
+            if(DebugGameObject && DebugText)
+            {
+                DebugGameObject.SetActive(DoDebuggingLeft || DoDebuggingRight);
+            }
         }
 
         //-----------Gesture tracking---------------
@@ -348,7 +357,7 @@ namespace Thry.SAO
             bool ringStraight = Mathf.Abs(handPlane.GetDistanceToPoint(ringE)) < maxFingerDistance;
             bool littleStraight = Mathf.Abs(handPlane.GetDistanceToPoint(littleE)) < maxFingerDistance;*/
 
-            if (doDebuggingLeft && debugText != null && hand == HAND_LEFT)
+            if (DoDebuggingLeft && DebugText != null && hand == HAND_LEFT)
             {
                 string t = "";
                 /*t += "index: " + indexStraight + " : " +  Mathf.Abs(handPlane.GetDistanceToPoint(indexE) / local_player_height) + "\n";
@@ -359,9 +368,9 @@ namespace Thry.SAO
                 t += "middle: " + middleStraight + " : " + middleDistance + "<" + (messured_min_middle_distance + maxFingerDistance) + "\n";
                 t += "ring: " + ringStraight + " : " + ringDistance + "<" + (messured_min_ring_distance + maxFingerDistance) + "\n";
                 t += "little: " + littleStraight + " : " + littleDistance + "<" + (messured_min_little_distance + maxFingerDistance) + "\n";
-                debugText.text = t;
+                DebugText.text = t;
             }
-            if (doDebuggingRight && debugText != null && hand == HAND_RIGHT)
+            if (DoDebuggingRight && DebugText != null && hand == HAND_RIGHT)
             {
                 string t = "";
                 /*t += "index: " + indexStraight + " : " +  Mathf.Abs(handPlane.GetDistanceToPoint(indexE) / local_player_height) + "\n";
@@ -372,7 +381,7 @@ namespace Thry.SAO
                 t += "middle: " + middleStraight + " : " + middleDistance + "<" + (messured_min_middle_distance + maxFingerDistance) + "\n";
                 t += "ring: " + ringStraight + " : " + ringDistance + "<" + (messured_min_ring_distance + maxFingerDistance) + "\n";
                 t += "little: " + littleStraight + " : " + littleDistance + "<" + (messured_min_little_distance + maxFingerDistance) + "\n";
-                debugText.text = t;
+                DebugText.text = t;
             }
 
             if (indexStraight && middleStraight && ringStraight && littleStraight) return GESTURE_HAND_OPEN;

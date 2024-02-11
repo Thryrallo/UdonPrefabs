@@ -9,7 +9,7 @@ namespace Thry.SAO
     public class Notification : UdonSharpBehaviour
     {
         [Header("Settings")]
-        public bool DO_ANNOUNCE_PLAYERS;
+        public bool DoAnnounceJoinLeaves;
         public Texture playerJoinTexture;
         public Texture playerLeaveTexture;
         public Color PlayerJoinColor;
@@ -61,6 +61,13 @@ namespace Thry.SAO
         private void Start()
         {
             startTime = Time.time;
+        }
+
+        public static Notification Get()
+        {
+            GameObject o = GameObject.Find("[Thry][NotificationSystem]");
+            if (o) return o.GetComponent<Notification>();
+            return null;
         }
 
         [HideInInspector]
@@ -140,7 +147,7 @@ namespace Thry.SAO
 
         public override void OnPlayerJoined(VRCPlayerApi joinedPlayerApi)
         {
-            if (DO_ANNOUNCE_PLAYERS && Time.time - startTime > 20)
+            if (DoAnnounceJoinLeaves && Time.time - startTime > 20)
             {
                 if (queuedJoinNotifications == 0)
                 {
@@ -163,7 +170,7 @@ namespace Thry.SAO
         }
         public override void OnPlayerLeft(VRCPlayerApi leftPlayerApi)
         {
-            if (DO_ANNOUNCE_PLAYERS)
+            if (DoAnnounceJoinLeaves)
             {
                 if (queuedLeaveNotifications == 0)
                 {
@@ -211,21 +218,24 @@ namespace Thry.SAO
 
         public void TestPlayerJoin()
         {
-            if (queuedJoinNotifications == 0)
+            if (DoAnnounceJoinLeaves)
             {
-                sentALotJoinNotification = false;
-            }
-            if (!sentALotJoinNotification)
-            {
-                if (queuedJoinNotifications > 5)
+                if (queuedJoinNotifications == 0)
                 {
-                    Queue("A lot of players", null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_NONE);
-                    sentALotJoinNotification = true;
+                    sentALotJoinNotification = false;
                 }
-                else
+                if (!sentALotJoinNotification)
                 {
-                    queuedJoinNotifications += 1;
-                    Queue("Test Player", null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_JOIN);
+                    if (queuedJoinNotifications > 5)
+                    {
+                        Queue("A lot of players", null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_NONE);
+                        sentALotJoinNotification = true;
+                    }
+                    else
+                    {
+                        queuedJoinNotifications += 1;
+                        Queue("Test Player", null, playerJoinTexture, PlayerJoinColor, PlayerNotificationBackgroundColor, PlayerNotificationTime, TYPE_JOIN);
+                    }
                 }
             }
         }

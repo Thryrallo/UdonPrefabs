@@ -11,6 +11,7 @@ namespace Thry.SAO
         const string DEBUG_PREFIX = "[Thry][SAO]";
         
         public Gestures GestureRecognizer;
+        public AudioSource OpenSound;
 
         [Header("Animation")]
         public Vector3 startPosition = new Vector3(0, 450, 0);
@@ -158,6 +159,7 @@ namespace Thry.SAO
                 animation_direction = 1;
                 animation_start_time = Time.time;
                 this.gameObject.SetActive(true);
+                OpenSound.Play();
                 //enable inworld indicators
                 foreach (GameObject o in inWorldIndicators) o.SetActive(true);
             }

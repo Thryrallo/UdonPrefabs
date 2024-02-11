@@ -111,7 +111,7 @@ namespace Thry.SAO.Button
             Teleport teleport = (Teleport)target;
             if(teleport.Menu == null)
             {
-                teleport.SetProgramVariable("Menu", GameObject.Find("[SAO]Menu").GetComponent<Menu>());
+                teleport.SetProgramVariable("Menu", GameObject.Find("[Thry]SAO_Menu").GetComponent<Menu>());
             }
         }
     }

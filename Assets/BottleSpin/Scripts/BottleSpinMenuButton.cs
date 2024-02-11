@@ -6,6 +6,7 @@ using VRC.Udon;
 
 namespace Thry.SpinTheBottle
 {
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class BottleSpinMenuButton : UdonSharpBehaviour
     {
         public Bottle MainScript;

@@ -60,13 +60,13 @@ MonoBehaviour:
   MaximumOpeningDistance: 5
   FullMask:
     serializedVersion: 2
-    m_Bits: 421393
+    m_Bits: 420369
   AllPlayerMask:
     serializedVersion: 2
-    m_Bits: 263680
+    m_Bits: 262656
   LocalPlayerMask:
     serializedVersion: 2
-    m_Bits: 263168
+    m_Bits: 262144
 --- !u!114 &566773759310217398
 MonoBehaviour:
   m_ObjectHideFlags: 0

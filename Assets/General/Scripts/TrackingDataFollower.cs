@@ -6,6 +6,7 @@ using VRC.Udon;
 
 namespace Thry.General
 {
+    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
     public class TrackingDataFollower : UdonSharpBehaviour
     {
         public VRCPlayerApi.TrackingDataType headType = VRCPlayerApi.TrackingDataType.Head;

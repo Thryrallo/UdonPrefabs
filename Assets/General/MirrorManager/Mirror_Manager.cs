@@ -26,7 +26,9 @@ namespace Thry
 
         [NonSerialized] public float Transparency = 1;
         private ThryMirror _activeMirror;
+        private ThryMirrorMenu _activeMenu;
         private int _lastMask;
+        private int _lastType;
         [NonSerialized] public bool DoCutout;
 
         private TextMeshProUGUI _mirrorInformation;
@@ -69,6 +71,7 @@ namespace Thry
             }
 
             _lastMask = FullMask;
+            _lastType = TYPE_FULL;
         }
 
         public void RegisterMirrorMenu(ThryMirrorMenu menu)
@@ -84,22 +87,22 @@ namespace Thry
 
         public void OnClap()
         {
-            FindMirror(_lastMask);
+            FindMirror(_lastType);
         }
 
         public void FullMirror()
         {
-            FindMirror(FullMask);
+            FindMirror(TYPE_FULL);
         }
 
         public void PlayerMirror()
         {
-            FindMirror(AllPlayerMask);
+            FindMirror(TYPE_PLAYER);
         }
 
         public void LocalPlayerMirror()
         {
-            FindMirror(LocalPlayerMask);
+            FindMirror(TYPE_LOCAL_PLAYER);
         }
 
         public void MirrorSettingsChanged()
@@ -114,7 +117,7 @@ namespace Thry
             }
         }
 
-        private void FindMirror(int mask)
+        private void FindMirror(int type)
         {
             VRCPlayerApi.TrackingData trackingData = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
 
@@ -129,7 +132,7 @@ namespace Thry
                     ThryMirror mirror = hit.transform.parent.GetComponent<ThryMirror>(); 
                     if (mirror)
                     {
-                        OpenInternal(mirror, mask);
+                        OpenInternal(mirror, type);
                         return;
                     }
                 }
@@ -138,30 +141,51 @@ namespace Thry
             TurnOffActive();
         }
 
-        public void Open(ThryMirror mirror, int type)
+        private void FindMenu()
         {
-            switch (type)
+            if(_activeMirror)
             {
-                case TYPE_FULL:
-                    OpenInternal(mirror, FullMask);
-                    break;
-                case TYPE_PLAYER:
-                    OpenInternal(mirror, AllPlayerMask);
-                    break;
-                case TYPE_LOCAL_PLAYER:
-                    OpenInternal(mirror, LocalPlayerMask);
-                    break;
+                foreach(ThryMirrorMenu menu in _allMenus)
+                {
+                    if(menu && menu.Target == _activeMirror)
+                    {
+                        _activeMenu = menu;
+                        return;
+                    }
+                }
             }
         }
 
-        private void OpenInternal(ThryMirror mirror, int mask)
+        public void Open(ThryMirror mirror, int type)
         {
+            OpenInternal(mirror, type);
+        }
+
+        private void OpenInternal(ThryMirror mirror, int type)
+        {
+            int mask = FullMask;
+            switch (type)
+            {
+                case TYPE_FULL:
+                    mask = FullMask;
+                    break;
+                case TYPE_PLAYER:
+                    mask = AllPlayerMask;
+                    break;
+                case TYPE_LOCAL_PLAYER:
+                    mask = LocalPlayerMask;
+                    break;
+            }
+
             if(_activeMirror == mirror)
             {
                 if(_lastMask != mask)
                 {
-                    _activeMirror.Set(mask, DoCutout, Transparency);
+                    _activeMirror.Set(mask, DoCutout && type != TYPE_FULL, Transparency);
+                    if(_activeMenu)
+                    _activeMenu.SetMirrorBorder(type);
                     _lastMask = mask;
+                    _lastType = type;
                 }else
                 {
                     TurnOffActive();
@@ -171,13 +195,22 @@ namespace Thry
             {
                 TurnOffActive();
                 _activeMirror  = mirror;
-                _activeMirror.Set(mask, DoCutout, Transparency);
+                _activeMirror.Set(mask, DoCutout && type != TYPE_FULL, Transparency);
+                FindMenu();
+                if(_activeMenu)
+                    _activeMenu.SetMirrorBorder(type);
                 _lastMask = mask;
+                _lastType = type;
             }
         }
 
         private void TurnOffActive()
         {
+            if(_activeMenu)
+            {
+                _activeMenu.SetMirrorBorder(-1);
+                _activeMenu = null;
+            }
             if(_activeMirror)
             {
                 _activeMirror.SetOff();

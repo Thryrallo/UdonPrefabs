@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: TransparentMirror
-  m_Shader: {fileID: 4800000, guid: dd1a36761b9dffe47b5c54fc04de5ae7, type: 3}
+  m_Shader: {fileID: 4800000, guid: 7b6936f89aea44d46ba06b26ee495b0a, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -83,7 +83,7 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _Transparency: 0.92608744
+    - _Transparency: 1
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:

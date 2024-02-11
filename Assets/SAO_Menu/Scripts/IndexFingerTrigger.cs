@@ -120,9 +120,11 @@ namespace Thry.SAO
             {
                 //ThryAction action = other.gameObject.GetComponent<ThryAction>();
                 Toggle toggle = other.gameObject.GetComponent<Toggle>();
+                bool playHaptic = false;
                 if (toggle != null)
                 {
                     toggle.isOn = !toggle.isOn;
+                    playHaptic = true;
                 }
                 else
                 {
@@ -132,12 +134,27 @@ namespace Thry.SAO
                     {
                         //action.OnInteraction();
                         action.SendCustomEvent("OnInteraction");
+                        action.SendCustomEvent("Execute");
+                        playHaptic = true;
                     }
                     if(button != null)
                     {
+                        playHaptic = true;
                         if (_clickedButton != null) _clickedButton.colors = _clickedButtonPrevColorBlock;
                         SetClickedButtonColor(button);
-                        if (_audioSource && onClickSound) _audioSource.PlayOneShot(onClickSound);
+                    }
+                }
+                if(playHaptic)
+                {
+                    if (_audioSource && onClickSound) _audioSource.PlayOneShot(onClickSound);
+                    // haptic
+                    if(isRightHand)
+                    {
+                        Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.1f, 0.3f, 0.1f);
+                    }
+                    else
+                    {
+                        Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, 0.1f, 0.3f, 0.1f);
                     }
                 }
             }

@@ -213,6 +213,21 @@ namespace Thry
             return fallback;
         }
 
+        public Color[] GetColors(VRCPlayerApi player)
+        {
+            int id = player.playerId;
+            if (id * C_COLORS < _syncedColors.Length)
+            {
+                Color[] colors = new Color[C_COLORS];
+                for (int i = 0; i < C_COLORS; i++)
+                {
+                    colors[i] = _syncedColors[id * C_COLORS + i];
+                }
+                return colors;
+            }
+            return new Color[C_COLORS];
+        }
+
         public Color GetColor()
         {
             return _playerColors[0];
