@@ -1745,85 +1745,18 @@ MonoBehaviour:
   _udonSharpBackingUdonBehaviour: {fileID: 6065284597875202374}
   SPIN_COUNT: 5
   SPIN_SPEED: 720
-  playerTracker: {fileID: -3154394018721979441}
-  targetedPlayerText: {fileID: 323278354}
-  Menu: {fileID: 8153828847299512588}
-  ToggleRandom: {fileID: 8231653813026777131}
-  ToggleTargeted: {fileID: 8514601849653524824}
-  ToggleTasks: {fileID: 743090179310415340}
-  TaskPopup: {fileID: 2753980798063731218}
-  TaskHeader: {fileID: 8309900241436267480}
-  TaskText: {fileID: 1810529955674532099}
-  Tasks:
-  - Chug for @range(4,10) seconds!
-  - Gift a shot!
-  - Take @range(1,4) shots.
-  - You and @p take @range(1,4) shots!
-  - Take 1 shot or make @p take 3 shots!
-  - '@p and you are now drink buddies. Drink when the other drinks!'
-  - The group decides on a dare for you.
-  - '@p decides on a dare for you.'
-  - '@p decides how much you drink.'
-  - Finish @range(20,50)% of you drink.
-  - Your friends drink.
-  - Everyone but you drinks.
-  - Everyone but you and @p drink.
-  - Everyone drinks, you decide how much.
-  - Group decides on a truth.
-  - '@p asks you a truth.'
-  - Drink if you think @p does ERP.
-  - Drink if you think @p ERPed @timeframe.
-  - Drink if you would ERP with @p
-  - Drink if you have ERPed @timeframe.
-  - Let @p pick your discord status.
-  - Let @p pick your vrchat status.
-  - Give @range(2,6) drinks.
-  - Waterfall!
-  - Do @p's next task.
-  - '@p does your next task.'
-  - Everones guesses your favourite food. If they are wrong, they drink.
-  - '@iftarget(Secret Task: Take a drink whenever @p says a name.|@target got a secret
-    long term task. If you can figure out what it is, give 10 shots)'
-  - Use the word/phrase "@iftarget(@phrase|???)" in the next 10 minutes. Everyone
-    else must figure out the phrase. Wrong guess = 1 drink (guesser & @target), Right
-    guess = award 10 drinks
-  - '@iftarget(Complement @p. If they refuse the compilment take 3 drinks. If they
-    take it, award 3 drinks.|??? Secret)'
-  GeneralTasks:
-  - Drink if you have eaten  @weird_food.
-  - Drink if you can cook.
-  - Shortest username drinks.
-  - Longest username drinks.
-  - Drink if you microwave water.
-  - Drink if you have dyed hair.
-  - Drink for your avatars meshes / 2.
-  - Drink for every light on your avatar.
-  - Largest avatar drinks.
-  - Smallest avatar drinks.
-  - Drink if you have said "@vrc_phrase" @timeframe
-  - Drink if you have worn @vrc_clothing.
-  - Drink if you own @vrc_hardware.
-  - Drink if you are a @vrc_category.
-  - Drink if you are over @range(22,26)
-  - Drink if you are scared of @scaryanimal.
-  - Drink if you are wearing @color.
-  - Drink @range(1,3) if you use poiyomi.
-  - Drink if you have gotten a speeding ticket.
-  - Drink if your avatar has animal ears.
-  - Drink if you are from @continent.
-  - Drink if you have a @pet.
-  - Drink if you have a pet.
-  - Drink if your drink contains @alcohol.
-  - Take @range(1,2) shots if you are in a relationship.
-  - All couoples drink.
-  - Drink if you have been to a VRC IRL meetup.
-  - All @vrc_platform_type players drink.
-  - All cis people drink!
-  - All trans people drink!
-  - All non-binary people drink!
-  - All gender-non-conforming people drink!
-  - All Boys Drink!
-  - All Girls Drink!
+  _taskFile: {fileID: 4900000, guid: 64a5c92b9b70f254f95011e990c2d9b2, type: 3}
+  _playerTracker: {fileID: -3154394018721979441}
+  _targetedPlayerText: {fileID: 323278354}
+  _audioSource: {fileID: 7372290106423667862}
+  _menu: {fileID: 8153828847299512588}
+  _toggleRandom: {fileID: 8231653813026777131}
+  _toggleTargeted: {fileID: 8514601849653524824}
+  _toggleTasks: {fileID: 743090179310415340}
+  _taskPopup: {fileID: 2753980798063731218}
+  _taskHeaderLabel: {fileID: 8309900241436267480}
+  _taskTextLabel: {fileID: 1810529955674532099}
+  _themeColor: {fileID: 0}
 --- !u!114 &6065284597875202374
 MonoBehaviour:
   m_ObjectHideFlags: 0

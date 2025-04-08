@@ -1,0 +1,7 @@
+2010-01-01;New Year's Day;(1,1,1);Neujahr;(1,1,1);Jour de l'an;(1,1,1)
+04-01;April Fools' Day;(1,1,1)
+10-09;Thry's Birthday;(1,0.5,1)
+2023-1-30 19:00->2023-1-30 23:30;Timed Event;(0,0.5,0)
+1-28 17:30->1-28 19:00;Yearly Event;(0,0.5,0.5)
+Monday 17:30->Tuesday 11:00;Monday to Tuesday;(0,0.5,0.5)
+Wednesday;Every Wednesday. All day;(0.5,0,0.5)

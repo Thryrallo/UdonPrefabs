@@ -1,0 +1,16 @@
+,en,de
+thry:github,https://github.com/Thryrallo/UdonPrefabs,
+thry:github_prefabs,https://github.com/Thryrallo/UdonPrefabs,
+thry:discord,https://thry.dev/d,
+,,
+swipemenu:localplayer_details_header,Identity:\nHeight:\nColor:\nInterface:,Identität:\nGröße:\nFarbe:\nSchnittstelle:
+swipemenu:teleport_to,Teleport to,Teleportieren
+swipemenu:remoteplayer_details_header,Identity:\nHeight:\nJoin Time:\nPlay Time:\nPersonality:,Identität:\nGröße:\nBeitritts-Zeit:\nSpiel Zeit:\nPersönlichkeit::
+swipemenu:playerlist,Playerlist,Spielerliste
+swipemenu:language,Language,Sprache
+swipemenu:announce_players,Join / Leave,
+,,
+swipemenu:volume,Volume,Lautstärke
+swipemenu:debug,Debug,
+swipemenu:background,Background,Hintergrund
+swipemenu:videoplayer,VideoPlayer,Video

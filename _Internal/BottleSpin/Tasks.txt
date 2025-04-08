@@ -1,0 +1,91 @@
+@color, red, green, blue, yellow, orange, purple, pink, black, white, brown, grey
+@continent, Africa, Asia, Europe, America, Oceania 
+@pet, dog, cat, fish, bird, hamster, snake, lizard, insect 
+@scary_animal, spider, snake, shark, bear, lion, tiger, crocodile, scorpion 
+@alcohol, beer, wine, vodka, whiskey, rum, gin, tequila 
+@vrc_category, femboy, egirl, eboy, avatar creator, world creator, anime enjoyer, weeb, programmer, student 
+@vrc_hardware, tundra tracker, lovense device, vive tracker 
+@vrc_clothing, collar, thigh highs, maid outfit, school uniform, skirt, lingerie, stockings, panties 
+@timeframe, today, last week, last month, last year, ever 
+@vrc_phrase, good girl, good boy, mirror dweller, Portal!, poggers, owo, uwu, pog, I'm pogging!, Tupper, VRAM, I am lagging. 
+@vrc_platform_type, Desktop, VR, Fullbody, Quest 
+@weird_food, eel, snail, frog, insect, octopus, squid, kangaroo,crocodile, horse
+@phrase Blahaj, Ikea, Bleep, Make the frogs gay!, femboy friday, I'm a catgirl, I'm a catboy, Furry hangout, Squirtle gang, Tupper, VRRat, VRChat Yacht, Fix the game!, Damn, i love pizza, Pizza, pizza in my tummy, me so hungy, me so hungy, The One Piece is real!, raid shadow legends, Hunter Biden, Donald Trump, Libtard, Chemtrails, Bigfoot, Illuminati, Flat Earth, Moon landing, Aliens, Area 51, 9/11, Bush did 9/11, Jet fuel can't melt steel beams, Vaccines cause autism, Pizzagate, QAnon, Pizza, Pasta, Pasta la vista, baby, Donald Duck, Micky Mouse, Kim Possible, Doofenschmirtz, Perry the Platypus, No, this is Patrick!
+
+__Individual__
+Chug for @random_integer(4,10) seconds!
+Gift a shot!
+Take @random_integer(1,4) shots.
+You and @random_player take @random_integer(1,4) shots!
+Take 1 shot or make @random_player take 3 shots!
+@random_player and you are now drink buddies. Drink when the other drinks!
+The group decides on a dare for you.
+@random_player decides on a dare for you.
+@random_player decides how much you drink.
+Finish @random_integer(20,50)% of you drink.
+Your friends drink.
+Everyone but you drinks.
+Everyone but you and @random_player drink.
+Everyone drinks, you decide how much.
+Group decides on a truth.
+@random_player asks you a truth.
+Drink if you think @random_player does ERP.
+Drink if you think @random_player ERPed @timeframe.
+Drink if you would ERP with @random_player
+Drink if you have ERPed @timeframe.
+Let @random_player pick your discord status.
+Let @random_player pick your vrchat status.
+Give @random_integer(2,6) drinks.
+Waterfall!
+Do @random_player's next task.
+@random_player does your next task.
+Everones guesses your favourite food. If they are wrong, they drink.
+@iftarget(Secret Task: Take a drink whenever @random_player says a name.|@target got a secret long term task. If you can figure out what it is, give 10 shots)
+Use the word/phrase \"@iftarget(@phrase|???)\" in the next 10 minutes. Everyone else must figure out the phrase. Wrong guess = 1 drink (guesser & @target), Right guess = award 10 drinks
+@iftarget(Complement @random_player. If they refuse the compilment take 3 drinks. If they take it, award 3 drinks.|??? Secret)
+If your drink contains @alcohol everyone else takes @random_integer(1,3) sips.
+If your drink contains @alcohol give @random_integer(1,5) sips.
+Competition with @random_player. Whoever drinks first may give @random_integer(2,5) sips.
+Competition with @random_player. Whover finishes their drink may give @random_integer(2,8) sips.
+If you own a @vrc_hardware, give @random_integer(2,5) drinks.
+Take one drink for every person that owns @vrc_hardware.
+Take one drink for every person that owns @vrc_clothing.
+Take one drink for every @vrc_platform_type user.
+Take a drink for every @pet your family has owned.
+@target? @phrase! You drink two!
+
+__Group__
+Drink if you have eaten  @weird_food.
+Drink if you can cook.
+Shortest username drinks.
+Longest username drinks.
+Drink if you microwave water.
+Drink if you have dyed hair.
+Drink for your avatars meshes / 2.
+Drink for every light on your avatar.
+Largest avatar drinks.
+Smallest avatar drinks.
+Drink if you have said \"@vrc_phrase\" @timeframe
+Drink if you have worn @vrc_clothing.
+Drink if you own @vrc_hardware.
+Drink if you are a @vrc_category.
+Drink if you are over @random_integer(22,26)
+Drink if you are scared of @scaryanimal.
+Drink if you are wearing @color.
+Drink @random_integer(1,3) if you use poiyomi.
+Drink if you have gotten a speeding ticket.
+Drink if your avatar has animal ears.
+Drink if you are from @continent.
+Drink if you have a @pet.
+Drink if you have a pet.
+Drink if your drink contains @alcohol.
+Take @random_integer(1,2) shots if you are in a relationship.
+All couoples drink.
+Drink if you have been to a VRC IRL meetup.
+All @vrc_platform_type players drink.
+All cis people drink!
+All trans people drink!
+All non-binary people drink!
+All gender-non-conforming people drink!
+All Boys Drink!
+All Girls Drink!

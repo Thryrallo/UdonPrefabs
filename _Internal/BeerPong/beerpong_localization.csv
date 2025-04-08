@@ -1,0 +1,38 @@
+,en,de
+bp:nav:game,Game,Spiel
+bp:nav:rules,Rules,Regeln
+bp:nav:player,Player,Spieler
+bp:nav:ai,AI,AI
+bp:nav:visual,Visual,Aussehen
+bp:nav:credits,Credits,Credits
+bp:last_assist,Last Assist,Letzte Hilfe
+bp:gamemode,Gamemode:,Spielmodus:
+bp:playercount,Players:,Spieler:
+bp:teams,Teams:,Teams:
+bp:barrier,Barriers:,Barrieren:
+bp:size,Size:,Größe:
+bp:self_fire,Self Fire:,Selbstbeschuss:
+bp:friendly_fire,Friendly Fire (Teams):,Teambeschuss:
+bp:auto_respawn,Auto Respawn Balls:,Auto Respawn Bälle:
+bp:avi_color,Use Avatar Color:,Nutze Avatar Farbe:
+bp:rows,Rows:,Reihen:
+bp:shape,Shape:,Form:
+bp:points_popup,Points Popup:,Punkte Popup:
+bp:reset,Reset,Zurücksetzen
+bp:rerack,Rerack,Umstellen
+bp:global_sync,Sync settings to all players,Synchronisieren Einstellungen zu Spielern
+bp:global_reset,Reset all players,Setzt alle Spieler zurück
+bp:enable_ai,Enable AI:,AI Aktiv:
+bp:ai_skill,Skill:,AI Skill:
+bp:ai_adaptive,Adaptive:,Adaptive AI:
+bp:volume,Volume:,Lautstärke:
+bp:aim_assist,Aim Assist:,Zielhilfe:
+bp:aim_adaptive,Adaptive:,Adaptive Zielhilfe:
+bp:gamemode_values[],Normal,
+bp:gamemode_values[],King of Pong,König des Berges
+bp:gamemode_values[],Big Pong,Das Pong
+bp:gamemode_values[],Mayham,Kudelgemuddle
+bp:shape_values[],Pyramid,Pyramide
+bp:shape_values[],Square,Quadrat
+bp:shape_values[],Circle,Kreis
+bp:shape_values[],Hashtag,Raute
